@@ -167,16 +167,16 @@ def test_kindergarten(db_session, test_kindergarten_user):
 def test_pedagogue(db_session, test_kindergarten):
     """Create test pedagogue."""
     from app.models.pedagogue import Pedagogue
+    from datetime import date
     
-    pedagogue_id = str(uuid.uuid4())
+    teacher_id = str(uuid.uuid4())
     pedagogue = Pedagogue(
-        pedagogue_id=pedagogue_id,
+        teacher_id=teacher_id,
         kindergarten_id=test_kindergarten.kindergarten_id,
         first_name="Maria",
         last_name="Ivanova",
-        position="Head Teacher",
-        phone="+998902222222",
-        email="maria@test.com"
+        email="maria@test.com",
+        hire_date=date(2020, 1, 1)
     )
     db_session.add(pedagogue)
     db_session.commit()
@@ -195,7 +195,7 @@ def test_group(db_session, test_kindergarten, test_pedagogue):
         group_id=group_id,
         kindergarten_id=test_kindergarten.kindergarten_id,
         group_name="Sunflower Group",
-        teacher_id=test_pedagogue.pedagogue_id,
+        teacher_id=test_pedagogue.teacher_id,
         start_date=date(2026, 1, 1),
         end_date=date(2026, 12, 31),
         schedule="Mon-Fri 8-18",
@@ -285,11 +285,11 @@ def test_enrollment(db_session, test_child, test_group):
 @pytest.fixture
 def test_parent_child_link(db_session, test_parent, test_child):
     """Create parent-child link."""
-    from app.models.parent import ParentChild
+    from app.models.child import ParentChildLink
     
     link_id = str(uuid.uuid4())
-    link = ParentChild(
-        parent_child_id=link_id,
+    link = ParentChildLink(
+        link_id=link_id,
         parent_id=test_parent.parent_id,
         child_id=test_child.child_id,
         note="My child"

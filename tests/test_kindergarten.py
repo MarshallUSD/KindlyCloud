@@ -41,7 +41,7 @@ def test_create_group(client, test_kindergarten_user_token, test_kindergarten, t
         "/api/v1/kindergartens/groups",
         json={
             "group_name": "Rainbow Group",
-            "teacher_id": test_pedagogue.pedagogue_id,
+            "teacher_id": test_pedagogue.teacher_id,
             "start_date": "2026-03-01",
             "end_date": "2026-12-31",
             "schedule": "Monday-Friday 8:00-18:00",
