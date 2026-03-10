@@ -34,7 +34,7 @@ class AuthService:
             phone=phone,
             email=email,
             password_hash=password_hash,
-            status=UserStatus.ACTIVE.value
+            status=UserStatus.ACTIVE
         )
         
         return user

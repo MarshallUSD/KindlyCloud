@@ -3,7 +3,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
-from app.models.user import User
+from app.models.user import User, UserStatus
 from app.repositories.base import BaseRepository
 
 
@@ -32,7 +32,7 @@ class UserRepository(BaseRepository):
         return self.get_by_id_field('user_id', user_id)
     
     def create_user(self, user_id: str, role: str, phone: Optional[str], 
-                   email: str, password_hash: str, status: str = "active") -> User:
+                   email: str, password_hash: str, status: UserStatus = UserStatus.ACTIVE) -> User:
         """Create a new user."""
         user = User(
             user_id=user_id,
