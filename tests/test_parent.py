@@ -38,7 +38,7 @@ def test_create_payment(client, test_parent_user_token, test_enrollment):
             "enrol_id": test_enrollment.enrol_id,
             "amount": "100000.00",
             "payment_date": "2026-03-10",
-            "provider": "PAYME",
+            "provider": "cash",
             "transaction_id": "TXN123456"
         },
         headers={"Authorization": f"Bearer {test_parent_user_token}"}
