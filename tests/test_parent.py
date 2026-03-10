@@ -33,7 +33,14 @@ def test_get_my_children(client, test_parent_user_token, test_parent_child_link)
 def test_create_payment(client, test_parent_user_token, test_enrollment):
     """Test creating a payment."""
     response = client.post(
-        f"/api/v1/parent/payments?enrol_id={test_enrollment.enrol_id}&amount=100000&provider=PAYME",
+        "/api/v1/parent/payments",
+        json={
+            "enrol_id": test_enrollment.enrol_id,
+            "amount": "100000.00",
+            "payment_date": "2026-03-10",
+            "provider": "PAYME",
+            "transaction_id": "TXN123456"
+        },
         headers={"Authorization": f"Bearer {test_parent_user_token}"}
     )
     assert response.status_code == status.HTTP_201_CREATED
@@ -41,7 +48,7 @@ def test_create_payment(client, test_parent_user_token, test_enrollment):
     assert data["amount"] == "100000.00"
 
 
-def test_list_payments(client, test_parent_user_token):
+def test_list_payments(client, test_parent_user_token, test_parent):
     """Test listing payments."""
     response = client.get(
         "/api/v1/parent/payments",

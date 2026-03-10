@@ -75,19 +75,16 @@ def get_todays_menu(
 
 @router.post("/payments", response_model=PaymentResponse, status_code=status.HTTP_201_CREATED)
 def create_payment(
-    enrol_id: str,
-    amount: float,
-    provider: PaymentProvider,
+    request: PaymentCreateRequest,
     current_user: User = Depends(get_current_parent_user),
     db: Session = Depends(get_db)
 ):
     """Create payment."""
     try:
-        from decimal import Decimal
         service = PaymentService(db)
         payment = service.create_payment(
-            current_user, enrol_id, Decimal(str(amount)),
-            date.today(), provider
+            current_user, request.enrol_id, request.amount,
+            request.payment_date, request.provider, request.transaction_id
         )
         return payment
     except ApplicationException as e:
