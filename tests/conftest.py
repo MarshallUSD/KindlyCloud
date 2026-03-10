@@ -273,8 +273,8 @@ def test_enrollment(db_session, test_child, test_group):
         enrol_date=date(2026, 3, 1),
         status="active",
         total_fees=Decimal("500000.00"),
-        paid_amount=Decimal("0.00"),
-        remaining_fees=Decimal("500000.00")
+        amount_paid=Decimal("0.00"),
+        balance=Decimal("500000.00")
     )
     db_session.add(enrollment)
     db_session.commit()
