@@ -30,7 +30,7 @@ def test_get_my_children(client, test_parent_user_token, test_parent_child_link)
     assert len(data) >= 1
 
 
-def test_create_payment(client, test_parent_user_token, test_enrollment):
+def test_create_payment(client, test_parent_user_token, test_enrollment, test_parent):
     """Test creating a payment."""
     response = client.post(
         "/api/v1/parent/payments",
