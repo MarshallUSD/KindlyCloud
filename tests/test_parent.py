@@ -56,4 +56,5 @@ def test_list_payments(client, test_parent_user_token):
 def test_unauthorized_parent_access(client):
     """Test accessing parent routes without auth."""
     response = client.get("/api/v1/parent/children")
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    # HTTPBearer returns 403 when credentials are missing
+    assert response.status_code == status.HTTP_403_FORBIDDEN

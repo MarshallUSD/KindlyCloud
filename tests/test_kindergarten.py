@@ -106,4 +106,5 @@ def test_create_enrollment(client, test_kindergarten_user_token, test_child, tes
 def test_unauthorized_access(client):
     """Test accessing kindergarten routes without auth."""
     response = client.get("/api/v1/kindergartens/me")
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    # HTTPBearer returns 403 when credentials are missing
+    assert response.status_code == status.HTTP_403_FORBIDDEN
