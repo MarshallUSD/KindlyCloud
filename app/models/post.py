@@ -12,7 +12,7 @@ class Post(Base):
     __tablename__ = "posts"
     
     post_id = Column(String, primary_key=True, index=True)
-    created_by_admin_user_id = Column(String, ForeignKey("users.user_id"), nullable=False, index=True)
+    created_by_admin_user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
     title = Column(String(255), nullable=False, index=True)
     body = Column(Text, nullable=False)
     target_kindergarten_id = Column(String, ForeignKey("kindergartens.kindergarten_id"), nullable=True)  # NULL means broadcast to all

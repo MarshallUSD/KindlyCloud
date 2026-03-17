@@ -33,7 +33,7 @@ class ParentUser(Base):
     __tablename__ = "parent_users"
     
     parent_user_id = Column(String, primary_key=True, index=True)
-    user_id = Column(String, ForeignKey("users.user_id"), nullable=False, unique=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, unique=True, index=True)
     parent_id = Column(String, ForeignKey("parents.parent_id"), nullable=False, unique=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     

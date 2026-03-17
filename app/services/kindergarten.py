@@ -17,7 +17,8 @@ class KindergartenService:
         self.repo = KindergartenRepository(db)
     
     def create_kindergarten(self, current_user: User, kinder_name: str, region: Optional[str] = None,
-                           district: Optional[str] = None, address: Optional[str] = None,
+                           city: Optional[str] = None, district: Optional[str] = None, 
+                           street: Optional[str] = None, address: Optional[str] = None,
                            phone: Optional[str] = None, email: Optional[str] = None,
                            payment_note: Optional[str] = None) -> Kindergarten:
         """Create a new kindergarten (only kindergarten role)."""
@@ -27,7 +28,9 @@ class KindergartenService:
             kindergarten_id=kindergarten_id,
             kinder_name=kinder_name,
             region=region,
+            city=city,
             district=district,
+            street=street,
             address=address,
             phone=phone,
             email=email,

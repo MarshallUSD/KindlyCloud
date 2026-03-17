@@ -18,25 +18,45 @@ class GroupService:
         self.group_repo = GroupRepository(db)
         self.kindergarten_repo = KindergartenRepository(db)
     
-    def create_group(self, current_user: User, group_name: str, teacher_id: str,
+    def create_group(self, current_user: User, group_name: str, teacher_ids: List[str],
                     start_date, end_date=None, schedule: Optional[str] = None,
-                    max_capacity: Optional[int] = None) -> Group:
+                    max_capacity: Optional[int] = None, age_from: Optional[int] = None,
+                    age_to: Optional[int] = None, room_number: Optional[str] = None,
+                    monthly_fee: Optional[float] = None, active_time_start=None,
+                    active_time_end=None) -> Group:
         """Create a new group (kindergarten staff only)."""
         kinder = self.kindergarten_repo.get_by_user_id(current_user.user_id)
         if not kinder:
             raise AuthorizationException("User does not belong to a kindergarten")
         
         group_id = str(uuid.uuid4())
-        return self.group_repo.create_group(
+        group = self.group_repo.create_group(
             group_id=group_id,
             kindergarten_id=kinder.kindergarten_id,
             group_name=group_name,
-            teacher_id=teacher_id,
             start_date=start_date,
             end_date=end_date,
             schedule=schedule,
-            max_capacity=max_capacity
+            max_capacity=max_capacity,
+            age_from=age_from,
+            age_to=age_to,
+            room_number=room_number,
+            monthly_fee=monthly_fee,
+            active_time_start=active_time_start,
+            active_time_end=active_time_end
         )
+        
+        from app.models.group import PedagogueGroupLink
+        for t_id in teacher_ids:
+            link_id = str(uuid.uuid4())
+            link = PedagogueGroupLink(
+                link_id=link_id,
+                teacher_id=t_id,
+                group_id=group.group_id
+            )
+            self.db.add(link)
+        self.db.commit()
+        return group
     
     def get_group(self, group_id: str) -> Group:
         """Get group by ID."""

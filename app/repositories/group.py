@@ -29,21 +29,31 @@ class GroupRepository(BaseRepository):
     
     def get_by_teacher(self, teacher_id: str) -> List[Group]:
         """Get groups by teacher."""
-        return self.db.query(Group).filter(Group.teacher_id == teacher_id).all()
+        from app.models.group import PedagogueGroupLink
+        links = self.db.query(PedagogueGroupLink).filter(PedagogueGroupLink.teacher_id == teacher_id).all()
+        return [link.group for link in links]
     
     def create_group(self, group_id: str, kindergarten_id: str, group_name: str,
-                    teacher_id: str, start_date, end_date=None,
-                    schedule: Optional[str] = None, max_capacity: Optional[int] = None) -> Group:
+                     start_date, end_date=None, schedule: Optional[str] = None, 
+                     max_capacity: Optional[int] = None, age_from: Optional[int] = None,
+                     age_to: Optional[int] = None, room_number: Optional[str] = None,
+                     monthly_fee: Optional[float] = None, active_time_start=None,
+                     active_time_end=None) -> Group:
         """Create a new group."""
         group = Group(
             group_id=group_id,
             kindergarten_id=kindergarten_id,
             group_name=group_name,
-            teacher_id=teacher_id,
             start_date=start_date,
             end_date=end_date,
             schedule=schedule,
-            max_capacity=max_capacity
+            max_capacity=max_capacity,
+            age_from=age_from,
+            age_to=age_to,
+            room_number=room_number,
+            monthly_fee=monthly_fee,
+            active_time_start=active_time_start,
+            active_time_end=active_time_end
         )
         self.db.add(group)
         self.db.commit()

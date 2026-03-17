@@ -28,7 +28,7 @@ class Feedback(Base):
     child_id = Column(String, ForeignKey("children.child_id"), nullable=True)
     message = Column(Text, nullable=False)
     status = Column(SQLEnum(FeedbackStatus), default=FeedbackStatus.OPEN, nullable=False)
-    handled_by_admin_user_id = Column(String, ForeignKey("users.user_id"), nullable=True, index=True)
+    handled_by_admin_user_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     

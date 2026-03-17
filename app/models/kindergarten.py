@@ -14,7 +14,9 @@ class Kindergarten(Base):
     kindergarten_id = Column(String, primary_key=True, index=True)
     kinder_name = Column(String(255), nullable=False, index=True)
     region = Column(String(100), nullable=True)
+    city = Column(String(100), nullable=True)
     district = Column(String(100), nullable=True)
+    street = Column(String(255), nullable=True)
     address = Column(Text, nullable=True)
     is_verified = Column(Boolean, default=False, nullable=False)
     phone = Column(String(20), nullable=True)
@@ -38,7 +40,7 @@ class KindergartenUser(Base):
     __tablename__ = "kindergarten_users"
     
     kindergarten_user_id = Column(String, primary_key=True, index=True)
-    user_id = Column(String, ForeignKey("users.user_id"), nullable=False, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
     kindergarten_id = Column(String, ForeignKey("kindergartens.kindergarten_id"), nullable=False, index=True)
     position = Column(String(100), nullable=True)  # e.g., "Director", "Staff"
     is_owner = Column(Boolean, default=False, nullable=False)

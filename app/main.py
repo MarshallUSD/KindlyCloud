@@ -6,12 +6,6 @@ from fastapi.responses import JSONResponse
 from config import settings
 from app.api.routes import auth_and_admin, kindergarten_routes, parent_routes
 from app.core.exceptions import ApplicationException
-from app.core.base import Base
-from app.core.db import engine
-
-
-# Create tables
-Base.metadata.create_all(bind=engine)
 
 # Initialize FastAPI app
 app = FastAPI(

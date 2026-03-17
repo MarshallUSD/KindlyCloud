@@ -17,6 +17,11 @@ class AuthService:
     def __init__(self, db: Session):
         self.db = db
         self.user_repo = UserRepository(db)
+
+    def generate_otp(self) -> str:
+        """Generate a simple 6-digit OTP."""
+        import random
+        return str(random.randint(100000, 999999))
     
     def register_user(self, role: UserRole, phone: Optional[str], email: str, password: str) -> User:
         """Register a new user."""
@@ -55,8 +60,70 @@ class AuthService:
             raise AuthenticationException("User is inactive")
         
         # Create JWT token
-        access_token = create_access_token(data={"sub": user.user_id})
+        access_token = create_access_token(data={"sub": str(user.user_id)})
         
+        return user, access_token
+
+    def send_parent_otp(self, phone: str) -> None:
+        """Send OTP to parent phone."""
+        user = self.user_repo.get_by_phone(phone)
+        otp = self.generate_otp()
+        from datetime import timedelta
+        expires_at = datetime.utcnow() + timedelta(minutes=10)
+        
+        if not user:
+            # Create inactive user for OTP flow
+            password_hash = "pending"
+            user = self.user_repo.create_user(
+                user_id=str(uuid.uuid4()),
+                role=UserRole.PARENT,
+                phone=phone,
+                email=f"{phone}@pending.local", # placeholder
+                password_hash=password_hash,
+                status=UserStatus.INACTIVE
+            )
+        
+        user.otp_code = otp
+        user.otp_expires_at = expires_at
+        self.db.commit()
+        
+        # In a real app, send SMA via Twilio/etc. 
+        # For now we will just print it or assume it is sent.
+        print(f"OTP for {phone}: {otp}")
+        
+    def verify_parent_otp(self, phone: str, otp_code: str, password: str) -> tuple[User, str]:
+        """Verify OTP, set password, and return access token."""
+        user = self.user_repo.get_by_phone(phone)
+        if not user or user.role != UserRole.PARENT:
+            raise AuthenticationException("Invalid user or not a parent")
+            
+        if user.otp_code != otp_code or user.otp_expires_at < datetime.utcnow():
+            raise AuthenticationException("Invalid or expired OTP")
+            
+        # Success verification
+        user.is_active = True
+        user.is_verified = True
+        user.password_hash = get_password_hash(password)
+        user.otp_code = None
+        user.otp_expires_at = None
+        
+        # Check if parent profile exists, if not create empty one
+        if not user.parent_user:
+            parent_id = str(uuid.uuid4())
+            parent = Parent(
+                parent_id=parent_id,
+                first_name="Pending",
+                last_name="Pending",
+                phone=phone
+            )
+            self.db.add(parent)
+            parent_user_id = str(uuid.uuid4())
+            parent_user = ParentUser(parent_user_id=parent_user_id, user_id=str(user.user_id), parent_id=parent_id)
+            self.db.add(parent_user)
+            
+        self.db.commit()
+        
+        access_token = create_access_token(data={"sub": str(user.user_id)})
         return user, access_token
     
     def register_parent_user(self, phone: Optional[str], email: str, password: str,
@@ -84,7 +151,7 @@ class AuthService:
         parent_user_id = str(uuid.uuid4())
         parent_user = ParentUser(
             parent_user_id=parent_user_id,
-            user_id=user.user_id,
+            user_id=str(user.user_id),
             parent_id=parent_id
         )
         self.db.add(parent_user)

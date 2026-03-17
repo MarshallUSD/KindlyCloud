@@ -1,6 +1,6 @@
 """Application configuration management."""
-import os
 from typing import List
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "KindlyCloud - Kindergarten Management System"
     PROJECT_DESCRIPTION: str = "A comprehensive REST API for kindergarten management"
     VERSION: str = "0.1.0"
-    DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
+    DEBUG: bool = False
     
     # Database
     DATABASE_URL: str = "postgresql://kindergarten:0ha8oxyPXxSe2DCl1efWU27R0YSxIiiG@dpg-d6jcj1s50q8c739ju3m0-a.singapore-postgres.render.com/kindlycloud"
@@ -35,6 +35,20 @@ class Settings(BaseSettings):
     # Pagination
     DEFAULT_PAGE_SIZE: int = 20
     MAX_PAGE_SIZE: int = 100
+
+    @field_validator("DEBUG", mode="before")
+    @classmethod
+    def parse_debug(cls, value):
+        """Accept common environment labels in addition to strict booleans."""
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"1", "true", "yes", "on", "debug", "dev", "development"}:
+                return True
+            if normalized in {"0", "false", "no", "off", "release", "prod", "production"}:
+                return False
+        return value
     
     class Config:
         case_sensitive = True

@@ -22,4 +22,4 @@ class Pedagogue(Base):
     
     # Relationships
     kindergarten = relationship("Kindergarten", back_populates="pedagogues")
-    groups = relationship("Group", back_populates="teacher")
+    group_links = relationship("PedagogueGroupLink", back_populates="pedagogue", cascade="all, delete-orphan")

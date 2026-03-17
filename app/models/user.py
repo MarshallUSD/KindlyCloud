@@ -1,15 +1,10 @@
 """User model and related enums."""
 from datetime import datetime
 from enum import Enum
-from sqlalchemy import Column, String, DateTime, Enum as SQLEnum
-from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import Boolean, Column, DateTime, Integer, String
 from sqlalchemy.orm import relationship
 from app.models.notification import Notification  # noqa
 from app.core.base import Base
-import uuid
-from sqlalchemy.dialects.postgresql import UUID
-
-user_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
 
 class UserRole(str, Enum):
@@ -29,17 +24,35 @@ class UserStatus(str, Enum):
 class User(Base):
     """User model for authentication and authorization."""
     __tablename__ = "users"
-    
-    user_id = Column(String, primary_key=True, index=True)
-    role = Column(SQLEnum(UserRole), nullable=False, index=True)
-    phone = Column(String(20), nullable=True, unique=True, index=True)
-    email = Column(String(255), nullable=False, unique=True, index=True)
+
+    # Map the current app's user_id field to the legacy DB id column.
+    user_id = Column("id", Integer, primary_key=True, index=True)
+    full_name = Column(String(100), nullable=True)
+    phone_or_email = Column(String(100), nullable=False, unique=True, index=True)
+    role = Column(String(50), nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
-    status = Column(SQLEnum(UserStatus), default=UserStatus.ACTIVE, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    is_verified = Column(Boolean, default=False, nullable=False)
+    otp_code = Column(String(10), nullable=True)
+    otp_expires_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-    
-    # Relationships
+
+    @property
+    def email(self) -> str | None:
+        return self.phone_or_email if "@" in self.phone_or_email else None
+
+    @property
+    def phone(self) -> str | None:
+        return self.phone_or_email if "@" not in self.phone_or_email else None
+
+    @property
+    def status(self) -> UserStatus:
+        return UserStatus.ACTIVE if self.is_active else UserStatus.INACTIVE
+
+    @property
+    def updated_at(self) -> datetime:
+        return self.created_at
+
     kindergarten_users = relationship("KindergartenUser", back_populates="user", cascade="all, delete-orphan")
     parent_user = relationship("ParentUser", back_populates="user", uselist=False, cascade="all, delete-orphan")
     posts = relationship("Post", back_populates="creator", foreign_keys="Post.created_by_admin_user_id")

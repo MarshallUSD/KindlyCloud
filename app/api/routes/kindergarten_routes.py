@@ -67,8 +67,10 @@ def create_group(
     try:
         service = GroupService(db)
         group = service.create_group(
-            current_user, request.group_name, request.teacher_id,
-            request.start_date, request.end_date, request.schedule, request.max_capacity
+            current_user, request.group_name, request.teacher_ids,
+            request.start_date, request.end_date, request.schedule, request.max_capacity,
+            request.age_from, request.age_to, request.room_number, request.monthly_fee,
+            request.active_time_start, request.active_time_end
         )
         return group
     except ApplicationException as e:

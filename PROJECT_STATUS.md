@@ -112,7 +112,8 @@ KindlyCloud/
 - `POST /api/v1/kindergartens/enrollments` - Enroll child
 - `POST /api/v1/kindergartens/attendance` - Mark attendance
 - `POST /api/v1/kindergartens/menus` - Create menu
-
+- `GET /api/v1/kindergartens/menus` - List menus
+- `
 ### Parent (requires parent role)
 - `POST /api/v1/parent/link-child` - Link child
 - `GET /api/v1/parent/children` - Get my children

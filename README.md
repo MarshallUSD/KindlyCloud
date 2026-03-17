@@ -15,24 +15,28 @@ Built with modern backend architecture using FastAPI and PostgreSQL.
 - Admin
 - Kindergarten
 - Parent
-- Pedagogue (Teacher)
 
 Secure JWT-based authentication system with role-based access control.
 
 ---
 
 ### 🏫 Kindergarten Panel
-- Manage groups
-- Assign pedagogues
-- Track attendance
-- Plan daily menus
-- Manage children enrollments
-- Receive and respond to feedback
-- Configure business profile & payment info
+-Dashboard
+- Manage groups CRUD
+- Assign pedagogues  CRUD
+- Track attendance CRUD
+- Parents 
+- Plan daily menus CRUD
+- Children
+- Receive and respond to feedback CRUD
+-Tracking payments
+- Create announcements/posts
+- Configure business profile & payment info GET/PUT/POST
+
 
 ---
 
-### 👨‍👩‍👧 Parent App
+### 👨‍👩‍👧 Parent   Telegram Bot App
 - Authentication via phone/email
 - View child's group & assigned pedagogue
 - View daily menu
@@ -84,9 +88,25 @@ Secure JWT-based authentication system with role-based access control.
 Multi-tenant architecture with centralized authentication and role-based access control.
 
 Separate frontends:
-- Parent Mobile App
+- Parent Telegram Bot App
 - Kindergarten Web Panel
 - Admin Web Dashboard
+
+---
+## Updates
+
+Parent during the authentication, enters phone number, receives OTP, enters OTP, enters password, confirms password, and is logged in.
+
+Kindergarten can attach its created pedagogues to groups.
+
+During the creating group, kindergaten can add extra info about group such as age from-to, capacity, room number, monthly fee, active time (8.30-17.30) based on active time parent can get notification when child is late or early.
+
+During the kindergarten authentication, first comes with email or phone number and password, then system checks if the kindergarten is verified, if not, it will send a verification email to the admin, if verified, it will send a verification email to the kindergarten. Then enters its kindergarten info such as name, address[region, city, district, street, payment info.]
+
+Kindergarten is business account, so one business owner can have multiple kindergartens.
+
+Parents can have multiple children, and each child can have multiple parents.
+
 
 ---
 

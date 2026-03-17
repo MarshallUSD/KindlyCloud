@@ -54,3 +54,6 @@ def decode_token(token: str) -> Optional[dict[str, Any]]:
         return None
     except jwt.InvalidTokenError:
         return None
+    
+
+    

@@ -24,6 +24,19 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class ParentOTPRequest(BaseModel):
+    """Request OTP for parent login/registration."""
+    phone: str = Field(..., description="Phone number")
+
+
+class ParentOTPVerifyRequest(BaseModel):
+    """Verify OTP and set password."""
+    phone: str = Field(..., description="Phone number")
+    otp_code: str = Field(..., description="OTP Code")
+    password: str = Field(..., min_length=8, description="Password to set")
+    confirm_password: str = Field(..., description="Confirm password")
+
+
 class UserResponse(BaseModel):
     """User response schema."""
     user_id: str

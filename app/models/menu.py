@@ -23,7 +23,7 @@ class Menu(Base):
     menu_id = Column(String, primary_key=True, index=True)
     kindergarten_id = Column(String, ForeignKey("kindergartens.kindergarten_id"), nullable=False, index=True)
     menu_date = Column(Date, nullable=False, index=True)
-    created_by_user_id = Column(String, ForeignKey("users.user_id"), nullable=False)
+    created_by_user_id = Column(String, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     
     # Relationships
