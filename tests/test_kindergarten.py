@@ -66,7 +66,7 @@ def test_list_groups(client, test_kindergarten_user_token, test_group):
     assert len(data["items"]) >= 1
 
 
-def test_create_child(client, test_kindergarten_user_token):
+def test_create_child(client, test_kindergarten_user_token, test_kindergarten):
     """Test creating a child."""
     response = client.post(
         "/api/v1/kindergartens/children",

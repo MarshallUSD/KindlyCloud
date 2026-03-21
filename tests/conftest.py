@@ -8,6 +8,7 @@ from sqlalchemy.pool import StaticPool
 from app.main import app
 from app.core.base import Base
 from app.core.db import get_db_session
+from app.models.admin import Admin
 from app.models.user import User, UserRole, UserStatus
 from app.core.security import get_password_hash
 import uuid
@@ -53,30 +54,28 @@ def client():
 @pytest.fixture
 def db_session():
     """Database session for tests."""
-    connection = engine.connect()
-    transaction = connection.begin()
-    session = TestingSessionLocal(bind=connection)
+    session = TestingSessionLocal()
 
     yield session
 
     session.close()
-    transaction.rollback()
-    connection.close()
 
 
 @pytest.fixture
 def test_admin_user(db_session):
     """Create test admin user."""
-    user =User(
-        user_id=str(uuid.uuid4()),
-        role=UserRole.ADMIN,
-        email="admin@test.com",
+    user = Admin(
+        first_name="Test",
+        last_name="Admin",
         phone="+1234567890",
+        email="admin@test.com",
         password_hash=get_password_hash("password123"),
-        status=UserStatus.ACTIVE
+        role="super_admin",
+        status="active",
     )
     db_session.add(user)
     db_session.commit()
+    db_session.refresh(user)
     return user
 
 
@@ -84,12 +83,11 @@ def test_admin_user(db_session):
 def test_kindergarten_user(db_session):
     """Create test kindergarten user."""
     user = User(
-        user_id=str(uuid.uuid4()),
+        full_name="Kinder User",
+        phone_or_email="kinder@test.com",
         role=UserRole.KINDERGARTEN,
-        email="kinder@test.com",
-        phone="+9876543210",
         password_hash=get_password_hash("password123"),
-        status=UserStatus.ACTIVE
+        is_active=True,
     )
     db_session.add(user)
     db_session.commit()
@@ -100,12 +98,11 @@ def test_kindergarten_user(db_session):
 def test_parent_user(db_session):
     """Create test parent user."""
     user = User(
-        user_id=str(uuid.uuid4()),
+        full_name="Parent User",
+        phone_or_email="parent@test.com",
         role=UserRole.PARENT,
-        email="parent@test.com",
-        phone="+5555555555",
         password_hash=get_password_hash("password123"),
-        status=UserStatus.ACTIVE
+        is_active=True,
     )
     db_session.add(user)
     db_session.commit()
@@ -116,21 +113,21 @@ def test_parent_user(db_session):
 def test_admin_token(test_admin_user):
     """Get auth token for admin user."""
     from app.core.security import create_access_token
-    return create_access_token(data={"sub": test_admin_user.user_id})
+    return create_access_token(data={"sub": str(test_admin_user.admin_id), "role": "admin"})
 
 
 @pytest.fixture
 def test_kindergarten_user_token(test_kindergarten_user):
     """Get auth token for kindergarten user."""
     from app.core.security import create_access_token
-    return create_access_token(data={"sub": test_kindergarten_user.user_id})
+    return create_access_token(data={"sub": str(test_kindergarten_user.user_id), "role": test_kindergarten_user.role})
 
 
 @pytest.fixture
 def test_parent_user_token(test_parent_user):
     """Get auth token for parent user."""
     from app.core.security import create_access_token
-    return create_access_token(data={"sub": test_parent_user.user_id})
+    return create_access_token(data={"sub": str(test_parent_user.user_id), "role": test_parent_user.role})
 
 
 @pytest.fixture

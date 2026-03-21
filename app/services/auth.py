@@ -2,165 +2,211 @@
 import uuid
 from datetime import datetime
 from typing import Optional
+
 from sqlalchemy.orm import Session
 
-from app.core.security import verify_password, get_password_hash, create_access_token
-from app.core.exceptions import AuthenticationException, ConflictException
-from app.models.user import User, UserRole, UserStatus
+from app.core.dependencies import build_auth_context
+from app.core.exceptions import AuthenticationException, ConflictException, NotFoundException
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    get_password_hash,
+    revoke_token,
+    verify_password,
+)
+from app.models.admin import Admin
+from app.models.kindergarten import KindergartenUser
 from app.models.parent import Parent, ParentUser
+from app.models.user import User, UserRole, UserStatus
+from app.repositories.admin import AdminRepository
+from app.repositories.kindergarten import KindergartenRepository
+from app.repositories.parent import ParentRepository
 from app.repositories.user import UserRepository
 
 
 class AuthService:
     """Service for authentication and user management."""
-    
+
     def __init__(self, db: Session):
         self.db = db
         self.user_repo = UserRepository(db)
+        self.admin_repo = AdminRepository(db)
+        self.kindergarten_repo = KindergartenRepository(db)
+        self.parent_repo = ParentRepository(db)
 
-    def generate_otp(self) -> str:
-        """Generate a simple 6-digit OTP."""
-        import random
-        return str(random.randint(100000, 999999))
-    
-    def register_user(self, role: UserRole, phone: Optional[str], email: str, password: str) -> User:
-        """Register a new user."""
-        # Check if user already exists
+    def _build_token_response(self, user: User) -> dict[str, str]:
+        claims = build_auth_context(self.db, user)
+        return {
+            "access_token": create_access_token(claims),
+            "refresh_token": create_refresh_token(claims),
+            "token_type": "bearer",
+        }
+
+    def register_kindergarten_user(
+        self,
+        email: str,
+        password: str,
+        phone: Optional[str] = None,
+        full_name: Optional[str] = None,
+    ) -> User:
+        """Register a public kindergarten-side user."""
         if self.user_repo.user_exists(email=email, phone=phone):
             raise ConflictException("User with this email or phone already exists")
-        
-        # Create user
-        user_id = str(uuid.uuid4())
-        password_hash = get_password_hash(password)
-        
+
         user = self.user_repo.create_user(
-            user_id=user_id,
-            role=role,
+            role=UserRole.KINDERGARTEN,
             phone=phone,
             email=email,
-            password_hash=password_hash,
-            status=UserStatus.ACTIVE
+            password_hash=get_password_hash(password),
+            status=UserStatus.ACTIVE,
         )
-        
+        if full_name:
+            user.full_name = full_name
+            self.db.commit()
+            self.db.refresh(user)
         return user
-    
-    def login(self, phone_or_email: str, password: str) -> tuple[User, str]:
-        """Authenticate user and return user object and JWT token."""
-        # Find user
-        user = self.user_repo.get_by_email_or_phone(phone_or_email)
-        if not user:
+
+    def authenticate_kindergarten(self, email: str, password: str) -> tuple[User, dict[str, str]]:
+        """Authenticate a kindergarten-side user."""
+        user = self.user_repo.get_by_email(email)
+        if not user or user.role != UserRole.KINDERGARTEN:
             raise AuthenticationException("Invalid credentials")
-        
-        # Verify password
         if not verify_password(password, user.password_hash):
             raise AuthenticationException("Invalid credentials")
-        
-        # Check if user is active
         if user.status != UserStatus.ACTIVE:
             raise AuthenticationException("User is inactive")
-        
-        # Create JWT token
-        access_token = create_access_token(data={"sub": str(user.user_id)})
-        
-        return user, access_token
+        return user, self._build_token_response(user)
 
-    def send_parent_otp(self, phone: str) -> None:
-        """Send OTP to parent phone."""
-        user = self.user_repo.get_by_phone(phone)
-        otp = self.generate_otp()
-        from datetime import timedelta
-        expires_at = datetime.utcnow() + timedelta(minutes=10)
-        
-        if not user:
-            # Create inactive user for OTP flow
-            password_hash = "pending"
-            user = self.user_repo.create_user(
-                user_id=str(uuid.uuid4()),
-                role=UserRole.PARENT,
-                phone=phone,
-                email=f"{phone}@pending.local", # placeholder
-                password_hash=password_hash,
-                status=UserStatus.INACTIVE
-            )
-        
-        user.otp_code = otp
-        user.otp_expires_at = expires_at
-        self.db.commit()
-        
-        # In a real app, send SMA via Twilio/etc. 
-        # For now we will just print it or assume it is sent.
-        print(f"OTP for {phone}: {otp}")
-        
-    def verify_parent_otp(self, phone: str, otp_code: str, password: str) -> tuple[User, str]:
-        """Verify OTP, set password, and return access token."""
-        user = self.user_repo.get_by_phone(phone)
+    def authenticate_parent(self, phone_number: str, password: str) -> tuple[User, dict[str, str]]:
+        """Authenticate a parent with phone number and password."""
+        user = self.user_repo.get_by_phone(phone_number)
         if not user or user.role != UserRole.PARENT:
-            raise AuthenticationException("Invalid user or not a parent")
-            
-        if user.otp_code != otp_code or user.otp_expires_at < datetime.utcnow():
-            raise AuthenticationException("Invalid or expired OTP")
-            
-        # Success verification
-        user.is_active = True
-        user.is_verified = True
-        user.password_hash = get_password_hash(password)
-        user.otp_code = None
-        user.otp_expires_at = None
-        
-        # Check if parent profile exists, if not create empty one
-        if not user.parent_user:
-            parent_id = str(uuid.uuid4())
-            parent = Parent(
-                parent_id=parent_id,
-                first_name="Pending",
-                last_name="Pending",
-                phone=phone
-            )
-            self.db.add(parent)
-            parent_user_id = str(uuid.uuid4())
-            parent_user = ParentUser(parent_user_id=parent_user_id, user_id=str(user.user_id), parent_id=parent_id)
-            self.db.add(parent_user)
-            
+            raise AuthenticationException("Invalid credentials")
+        if not verify_password(password, user.password_hash):
+            raise AuthenticationException("Invalid credentials")
+        if user.status != UserStatus.ACTIVE:
+            raise AuthenticationException("User is inactive")
+        if not self.parent_repo.get_by_user_id(user.user_id):
+            raise AuthenticationException("Parent account is not linked")
+        return user, self._build_token_response(user)
+
+    def authenticate_admin(self, email: str, password: str) -> tuple[Admin, dict[str, str]]:
+        """Authenticate an internal platform admin."""
+        admin = self.admin_repo.get_by_email(email)
+        if not admin or not verify_password(password, admin.password_hash):
+            raise AuthenticationException("Invalid credentials")
+        if admin.status != "active":
+            raise AuthenticationException("Admin is inactive")
+
+        admin.last_login_at = datetime.utcnow()
         self.db.commit()
-        
-        access_token = create_access_token(data={"sub": str(user.user_id)})
-        return user, access_token
-    
-    def register_parent_user(self, phone: Optional[str], email: str, password: str,
-                            first_name: str, last_name: str,
-                            phone_profile: str, address: Optional[str] = None,
-                            birth_date=None) -> tuple[User, Parent]:
-        """Register a parent user with parent profile."""
-        # Register user
-        user = self.register_user(UserRole.PARENT, phone, email, password)
-        
-        # Create parent profile
-        parent_id = str(uuid.uuid4())
-        parent = Parent(
-            parent_id=parent_id,
-            first_name=first_name,
-            last_name=last_name,
-            phone=phone_profile,
-            email=email,
-            address=address,
-            birth_date=birth_date
-        )
-        self.db.add(parent)
-        
-        # Link parent to user
-        parent_user_id = str(uuid.uuid4())
-        parent_user = ParentUser(
-            parent_user_id=parent_user_id,
-            user_id=str(user.user_id),
-            parent_id=parent_id
-        )
-        self.db.add(parent_user)
-        
-        self.db.commit()
-        self.db.refresh(parent)
-        
-        return user, parent
-    
+        claims = {"sub": str(admin.admin_id), "role": "admin", "email": admin.email, "phone": admin.phone}
+        return admin, {
+            "access_token": create_access_token(claims),
+            "refresh_token": create_refresh_token(claims),
+            "token_type": "bearer",
+        }
+
+    def refresh_tokens(self, refresh_token: str) -> dict[str, str]:
+        """Refresh access and refresh tokens."""
+        payload = decode_token(refresh_token)
+        if not payload or payload.get("type") != "refresh":
+            raise AuthenticationException("Invalid or expired refresh token")
+
+        claims = {
+            "sub": payload.get("sub"),
+            "role": payload.get("role"),
+            "kindergarten_id": payload.get("kindergarten_id"),
+            "parent_id": payload.get("parent_id"),
+            "email": payload.get("email"),
+            "phone": payload.get("phone"),
+        }
+        revoke_token(refresh_token)
+        return {
+            "access_token": create_access_token(claims),
+            "refresh_token": create_refresh_token(claims),
+            "token_type": "bearer",
+        }
+
+    def logout(self, access_token: str, refresh_token: Optional[str] = None) -> None:
+        """Invalidate currently issued tokens for the running process."""
+        revoke_token(access_token)
+        if refresh_token:
+            revoke_token(refresh_token)
+
     def get_user(self, user_id: str) -> Optional[User]:
         """Get user by ID."""
         return self.user_repo.get_by_id(user_id)
+
+    def create_parent_account(
+        self,
+        current_user: User,
+        first_name: str,
+        last_name: str,
+        phone_number: str,
+        password: str,
+        email: Optional[str] = None,
+        address: Optional[str] = None,
+        birth_date=None,
+        child_ids: Optional[list[str]] = None,
+    ) -> Parent:
+        """Create a parent account from inside a kindergarten tenant."""
+        kindergarten = self.kindergarten_repo.get_by_user_id(current_user.user_id)
+        if not kindergarten:
+            raise NotFoundException("Kindergarten not found for this user")
+        if self.user_repo.user_exists(phone=phone_number):
+            raise ConflictException("User with this phone already exists")
+        if email and self.parent_repo.get_by_email(email):
+            raise ConflictException("Parent with this email already exists")
+
+        user = self.user_repo.create_user(
+            role=UserRole.PARENT,
+            phone=phone_number,
+            email="",
+            password_hash=get_password_hash(password),
+            status=UserStatus.ACTIVE,
+        )
+        user.phone_or_email = phone_number
+        self.db.flush()
+
+        parent = Parent(
+            parent_id=str(uuid.uuid4()),
+            first_name=first_name,
+            last_name=last_name,
+            phone=phone_number,
+            email=email,
+            address=address,
+            birth_date=birth_date,
+        )
+        self.db.add(parent)
+        self.db.flush()
+
+        self.db.add(
+            ParentUser(
+                parent_user_id=str(uuid.uuid4()),
+                user_id=user.user_id,
+                parent_id=parent.parent_id,
+            )
+        )
+
+        if child_ids:
+            from app.models.child import ParentChildLink
+            from app.repositories.child import ChildRepository
+
+            child_repo = ChildRepository(self.db)
+            for child_id in child_ids:
+                child = child_repo.get_by_id(child_id)
+                if not child or child.kindergarten_id != kindergarten.kindergarten_id:
+                    raise NotFoundException(f"Child {child_id} not found in your kindergarten")
+                self.db.add(
+                    ParentChildLink(
+                        link_id=str(uuid.uuid4()),
+                        parent_id=parent.parent_id,
+                        child_id=child_id,
+                    )
+                )
+
+        self.db.commit()
+        self.db.refresh(parent)
+        return parent

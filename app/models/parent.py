@@ -1,7 +1,7 @@
 """Parent models."""
-from datetime import datetime, date
-from sqlalchemy import Column, String, DateTime, Date, ForeignKey, Text
-from sqlalchemy import Enum as SQLEnum
+from datetime import datetime
+
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.core.base import Base
@@ -33,7 +33,7 @@ class ParentUser(Base):
     __tablename__ = "parent_users"
     
     parent_user_id = Column(String, primary_key=True, index=True)
-    user_id = Column(String, ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
     parent_id = Column(String, ForeignKey("parents.parent_id"), nullable=False, unique=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     

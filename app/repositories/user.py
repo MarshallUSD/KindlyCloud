@@ -29,7 +29,7 @@ class UserRepository(BaseRepository):
         """Get user by user_id."""
         return self.get_by_id_field('user_id', int(user_id))
     
-    def create_user(self, user_id: str, role: str, phone: Optional[str], 
+    def create_user(self, role: str, phone: Optional[str],
                    email: str, password_hash: str, status: UserStatus = UserStatus.ACTIVE) -> User:
         """Create a new user."""
         login_value = email or phone

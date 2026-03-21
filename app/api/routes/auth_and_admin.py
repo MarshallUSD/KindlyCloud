@@ -13,7 +13,8 @@ from app.schemas.post import PostCreateRequest, PostResponse
 from app.schemas.feedback import FeedbackCreateRequest, FeedbackUpdateRequest, FeedbackResponse
 from app.models.feedback import FeedbackStatus
 from app.core.exceptions import ApplicationException
-from app.models.user import User
+from app.models.admin import Admin
+from app.repositories.kindergarten import KindergartenRepository
 
 router = APIRouter()
 
@@ -24,7 +25,7 @@ def register(request: UserRegisterRequest, db: Session = Depends(get_db)):
         service = AuthService(db)
         user = service.register_user(request.role, request.phone, request.email, request.password)
         from app.core.security import create_access_token
-        access_token = create_access_token(data={"sub": str(user.user_id)})
+        access_token = create_access_token(data={"sub": str(user.user_id), "role": user.role})
         return {"access_token": access_token, "token_type": "bearer"}
     except ApplicationException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
@@ -35,15 +36,6 @@ def login(request: UserLoginRequest, db: Session = Depends(get_db)):
     try:
         service = AuthService(db)
         user, access_token = service.login(request.phone_or_email, request.password)
-        
-        # Additional check for Kindergarten
-        from app.models.user import UserRole
-        if user.role == UserRole.KINDERGARTEN and not user.is_verified:
-            # If Kindergarten, we could throw AuthenticationException("Not Verified")
-            # But the user might want them to be able to login to see their "pending" status
-            # We'll let them login but the profile routes might be blocked, or we just let them login.
-            pass
-            
         return {"access_token": access_token, "token_type": "bearer"}
     except ApplicationException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
@@ -74,7 +66,7 @@ def verify_parent_otp(request: ParentOTPVerifyRequest, db: Session = Depends(get
 @router.post("/admin/posts", response_model=PostResponse, status_code=status.HTTP_201_CREATED)
 def create_post(
     request: PostCreateRequest,
-    current_user: User = Depends(get_current_admin),
+    current_user: Admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Create an admin post."""
@@ -90,7 +82,7 @@ def list_feedback(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     status_filter: Optional[FeedbackStatus] = Query(None),
-    current_user: User = Depends(get_current_admin),
+    current_user: Admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Get all feedback (admin)."""
@@ -115,7 +107,7 @@ def list_feedback(
 def update_feedback_status(
     feedback_id: str,
     request: FeedbackUpdateRequest,
-    current_user: User = Depends(get_current_admin),
+    current_user: Admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Update feedback status."""
@@ -129,7 +121,7 @@ def update_feedback_status(
 @router.post("/admin/verify-kindergarten/{user_id}", status_code=status.HTTP_200_OK)
 def verify_kindergarten(
     user_id: str,
-    current_user: User = Depends(get_current_admin),
+    current_user: Admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Verify a kindergarten user so they can access the platform."""
@@ -138,8 +130,13 @@ def verify_kindergarten(
         target_user = service.get_user(user_id)
         if not target_user:
             raise ApplicationException("User not found", status_code=404)
-            
-        target_user.is_verified = True
+
+        kindergarten_repo = KindergartenRepository(db)
+        kindergarten = kindergarten_repo.get_by_user_id(target_user.user_id)
+        if not kindergarten:
+            raise ApplicationException("Kindergarten not found for this user", status_code=404)
+
+        kindergarten.is_verified = True
         db.commit()
         
         return {"success": True, "message": "Kindergarten effectively verified"}

@@ -14,7 +14,7 @@ class PostCreateRequest(BaseModel):
 class PostResponse(BaseModel):
     """Post response schema."""
     post_id: str
-    created_by_admin_user_id: str
+    created_by_admin_id: int
     title: str
     body: str
     target_kindergarten_id: Optional[str]

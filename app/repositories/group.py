@@ -33,17 +33,29 @@ class GroupRepository(BaseRepository):
         links = self.db.query(PedagogueGroupLink).filter(PedagogueGroupLink.teacher_id == teacher_id).all()
         return [link.group for link in links]
     
-    def create_group(self, group_id: str, kindergarten_id: str, group_name: str,
-                     start_date, end_date=None, schedule: Optional[str] = None, 
-                     max_capacity: Optional[int] = None, age_from: Optional[int] = None,
-                     age_to: Optional[int] = None, room_number: Optional[str] = None,
-                     monthly_fee: Optional[float] = None, active_time_start=None,
-                     active_time_end=None) -> Group:
+    def create_group(
+        self,
+        group_id: str,
+        kindergarten_id: str,
+        group_name: str,
+        start_date,
+        end_date=None,
+        schedule: Optional[str] = None,
+        max_capacity: Optional[int] = None,
+        age_from: Optional[int] = None,
+        age_to: Optional[int] = None,
+        room_number: Optional[str] = None,
+        monthly_fee: Optional[float] = None,
+        active_time_start=None,
+        active_time_end=None,
+        teacher_id: Optional[str] = None,
+    ) -> Group:
         """Create a new group."""
         group = Group(
             group_id=group_id,
             kindergarten_id=kindergarten_id,
             group_name=group_name,
+            teacher_id=teacher_id,
             start_date=start_date,
             end_date=end_date,
             schedule=schedule,

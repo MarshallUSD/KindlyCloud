@@ -1,50 +1,83 @@
 """Authentication schemas."""
-from pydantic import BaseModel, EmailStr, Field
+from datetime import datetime
 from typing import Optional
+
+from pydantic import BaseModel, EmailStr, Field
+
 from app.models.user import UserRole, UserStatus
 
 
 class UserRegisterRequest(BaseModel):
-    """User registration request."""
-    role: UserRole = Field(..., description="User role: admin, kindergarten, or parent")
-    phone: Optional[str] = Field(None, min_length=7, max_length=20)
+    """Public kindergarten registration request."""
+
     email: EmailStr
     password: str = Field(..., min_length=8, description="Password must be at least 8 characters")
+    full_name: Optional[str] = Field(None, max_length=100)
+    phone: Optional[str] = Field(None, min_length=7, max_length=20)
 
 
 class UserLoginRequest(BaseModel):
-    """User login request."""
-    phone_or_email: str = Field(..., description="Phone number or email address")
+    """Public kindergarten login request."""
+
+    email: EmailStr
     password: str
+
+
+class ParentLoginRequest(BaseModel):
+    """Parent login request."""
+
+    phone_number: str = Field(..., min_length=7, max_length=20)
+    password: str
+
+
+class AdminLoginRequest(BaseModel):
+    """Internal platform admin login request."""
+
+    email: EmailStr
+    password: str
+
+
+class TokenRefreshRequest(BaseModel):
+    """Refresh token request."""
+
+    refresh_token: str
+
+
+class LogoutRequest(BaseModel):
+    """Logout request."""
+
+    refresh_token: Optional[str] = None
 
 
 class TokenResponse(BaseModel):
     """JWT token response."""
+
     access_token: str
+    refresh_token: Optional[str] = None
     token_type: str = "bearer"
 
 
-class ParentOTPRequest(BaseModel):
-    """Request OTP for parent login/registration."""
-    phone: str = Field(..., description="Phone number")
+class CurrentUserResponse(BaseModel):
+    """Authenticated subject payload."""
 
-
-class ParentOTPVerifyRequest(BaseModel):
-    """Verify OTP and set password."""
-    phone: str = Field(..., description="Phone number")
-    otp_code: str = Field(..., description="OTP Code")
-    password: str = Field(..., min_length=8, description="Password to set")
-    confirm_password: str = Field(..., description="Confirm password")
+    user_id: str
+    role: str
+    kindergarten_id: Optional[str] = None
+    parent_id: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    token_type: str = "access"
 
 
 class UserResponse(BaseModel):
     """User response schema."""
+
     user_id: str
     role: UserRole
-    email: str
+    email: Optional[str]
     phone: Optional[str]
     status: UserStatus
-    created_at: str
-    
+    created_at: datetime
+
     class Config:
         from_attributes = True

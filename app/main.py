@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from config import settings
-from app.api.routes import auth_and_admin, kindergarten_routes, parent_routes
+from app.api.routes import admin_routes, auth, kindergarten_routes, parent_routes
 from app.core.exceptions import ApplicationException
 
 # Initialize FastAPI app
@@ -47,7 +47,8 @@ async def health_check():
 
 
 # Include routers
-app.include_router(auth_and_admin.router, prefix=f"{settings.API_V1_PREFIX}/auth", tags=["auth", "admin"])
+app.include_router(auth.router, prefix=f"{settings.API_V1_PREFIX}/auth", tags=["auth"])
+app.include_router(admin_routes.router, prefix=f"{settings.API_V1_PREFIX}/admin", tags=["admin"])
 app.include_router(kindergarten_routes.router, prefix=f"{settings.API_V1_PREFIX}/kindergartens", tags=["kindergarten"])
 app.include_router(parent_routes.router, prefix=f"{settings.API_V1_PREFIX}/parent", tags=["parent"])
 

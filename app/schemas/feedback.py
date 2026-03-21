@@ -24,7 +24,7 @@ class FeedbackResponse(BaseModel):
     child_id: Optional[str]
     message: str
     status: FeedbackStatus
-    handled_by_admin_user_id: Optional[str]
+    handled_by_admin_id: Optional[int]
     created_at: datetime
     updated_at: datetime
     

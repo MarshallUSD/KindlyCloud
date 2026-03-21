@@ -3,20 +3,14 @@ import pytest
 from fastapi import status
 
 
-def test_link_child(client, test_parent_user_token, test_child, test_parent):
-    """Test linking child to parent."""
+def test_parent_cannot_self_link_child(client, test_parent_user_token, test_child):
+    """Parent self-link endpoint must not exist publicly."""
     response = client.post(
         "/api/v1/parent/link-child",
-        json={
-            "child_id": test_child.child_id,
-            "note": "My son"
-        },
-        headers={"Authorization": f"Bearer {test_parent_user_token}"}
+        json={"child_id": test_child.child_id, "note": "My son"},
+        headers={"Authorization": f"Bearer {test_parent_user_token}"},
     )
-    assert response.status_code == status.HTTP_201_CREATED
-    data = response.json()
-    assert data["child_id"] == test_child.child_id
-    assert data["parent_id"] == test_parent.parent_id
+    assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 def test_get_my_children(client, test_parent_user_token, test_parent_child_link):
@@ -30,7 +24,7 @@ def test_get_my_children(client, test_parent_user_token, test_parent_child_link)
     assert len(data) >= 1
 
 
-def test_create_payment(client, test_parent_user_token, test_enrollment, test_parent):
+def test_create_payment(client, test_parent_user_token, test_enrollment, test_parent, test_parent_child_link):
     """Test creating a payment."""
     response = client.post(
         "/api/v1/parent/payments",

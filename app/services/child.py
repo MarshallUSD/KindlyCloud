@@ -19,9 +19,20 @@ class ChildService:
         self.child_repo = ChildRepository(db)
         self.kindergarten_repo = KindergartenRepository(db)
     
-    def create_child(self, first_name: str, last_name: str, birth_date: date,
-                    gender: Optional[str] = None, address: Optional[str] = None) -> Child:
+    def create_child(
+        self,
+        current_user: User,
+        first_name: str,
+        last_name: str,
+        birth_date: date,
+        gender: Optional[str] = None,
+        address: Optional[str] = None,
+    ) -> Child:
         """Create a new child record."""
+        kindergarten = self.kindergarten_repo.get_by_user_id(current_user.user_id)
+        if not kindergarten:
+            raise NotFoundException("No kindergarten found for this user")
+
         child_id = str(uuid.uuid4())
         return self.child_repo.create_child(
             child_id=child_id,
@@ -29,7 +40,8 @@ class ChildService:
             last_name=last_name,
             birth_date=birth_date,
             gender=gender,
-            address=address
+            address=address,
+            kindergarten_id=kindergarten.kindergarten_id,
         )
     
     def get_child(self, child_id: str) -> Child:

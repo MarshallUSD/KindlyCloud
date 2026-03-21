@@ -1,5 +1,6 @@
 """Import all models so SQLAlchemy can resolve string relationships."""
 
+from app.models.admin import Admin
 from app.models.attendance import Attendance
 from app.models.child import Child, ParentChildLink
 from app.models.enrollment import Enrollment

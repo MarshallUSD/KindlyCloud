@@ -3,6 +3,7 @@ import uuid
 from typing import Optional, List, Tuple
 from sqlalchemy.orm import Session
 
+from app.models.admin import Admin
 from app.models.feedback import Feedback, FeedbackStatus
 from app.models.user import User
 from app.repositories.feedback import FeedbackRepository
@@ -57,13 +58,13 @@ class FeedbackService:
             raise NotFoundException("Feedback not found")
         return feedback
     
-    def update_feedback_status(self, current_user: User, feedback_id: str,
+    def update_feedback_status(self, current_user: Admin, feedback_id: str,
                               status: FeedbackStatus) -> Feedback:
         """Update feedback status (admin only)."""
         return self.feedback_repo.update_status(
             feedback_id=feedback_id,
             status=status,
-            handled_by_admin_user_id=current_user.user_id
+            handled_by_admin_id=current_user.admin_id
         )
     
     def list_all_feedback(self, skip: int = 0, limit: int = 20) -> Tuple[List[Feedback], int]:

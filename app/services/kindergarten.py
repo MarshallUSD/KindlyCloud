@@ -22,6 +22,10 @@ class KindergartenService:
                            phone: Optional[str] = None, email: Optional[str] = None,
                            payment_note: Optional[str] = None) -> Kindergarten:
         """Create a new kindergarten (only kindergarten role)."""
+        existing = self.repo.get_by_user_id(current_user.user_id)
+        if existing:
+            raise AuthorizationException("User already belongs to a kindergarten")
+
         kindergarten_id = str(uuid.uuid4())
         
         kinder = self.repo.create_kindergarten(

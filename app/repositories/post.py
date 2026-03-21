@@ -43,12 +43,12 @@ class PostRepository(BaseRepository):
         
         return records, total
     
-    def create_post(self, post_id: str, created_by_admin_user_id: str, title: str,
+    def create_post(self, post_id: str, created_by_admin_id: int, title: str,
                    body: str, target_kindergarten_id: Optional[str] = None) -> Post:
         """Create a new post."""
         post = Post(
             post_id=post_id,
-            created_by_admin_user_id=created_by_admin_user_id,
+            created_by_admin_id=created_by_admin_id,
             title=title,
             body=body,
             target_kindergarten_id=target_kindergarten_id

@@ -71,15 +71,15 @@ class FeedbackRepository(BaseRepository):
         return feedback
     
     def update_status(self, feedback_id: str, status: FeedbackStatus,
-                     handled_by_admin_user_id: Optional[str] = None) -> Optional[Feedback]:
+                     handled_by_admin_id: Optional[int] = None) -> Optional[Feedback]:
         """Update feedback status."""
         feedback = self.get_by_id(feedback_id)
         if not feedback:
             return None
         
         feedback.status = status
-        if handled_by_admin_user_id:
-            feedback.handled_by_admin_user_id = handled_by_admin_user_id
+        if handled_by_admin_id is not None:
+            feedback.handled_by_admin_id = handled_by_admin_id
         
         self.db.commit()
         self.db.refresh(feedback)

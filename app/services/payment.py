@@ -39,7 +39,10 @@ class PaymentService:
         child = self.child_repo.get_by_id(enrollment.child_id)
         if not child:
             raise NotFoundException("Child not found")
-        
+        linked_child_ids = {linked_child.child_id for linked_child in self.child_repo.get_children_by_parent(parent.parent_id, active_only=True)}
+        if child.child_id not in linked_child_ids:
+            raise NotFoundException("Child is not linked to this parent")
+
         payment_id = str(uuid.uuid4())
         payment = self.payment_repo.create_payment(
             payment_id=payment_id,

@@ -12,6 +12,8 @@ class ParentCreateRequest(BaseModel):
     email: Optional[EmailStr] = None
     address: Optional[str] = None
     birth_date: Optional[date] = None
+    password: str = Field(..., min_length=8)
+    child_ids: list[str] = Field(default_factory=list)
 
 
 class ParentUpdateRequest(BaseModel):

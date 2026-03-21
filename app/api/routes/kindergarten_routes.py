@@ -10,12 +10,14 @@ from app.schemas.child import ChildCreateRequest, ChildUpdateRequest, ChildRespo
 from app.schemas.enrollment import EnrollmentCreateRequest, EnrollmentResponse
 from app.schemas.attendance import AttendanceCreateRequest, AttendanceResponse
 from app.schemas.menu import MenuCreateRequest, MenuResponse
+from app.schemas.parent import ParentCreateRequest, ParentResponse
 from app.schemas.base import PaginatedResponse
 from app.services.kindergarten import KindergartenService
 from app.services.group import GroupService
 from app.services.child import ChildService
 from app.services.enrollment import EnrollmentService
 from app.services.menu import MenuService
+from app.services.auth import AuthService
 from app.core.exceptions import ApplicationException
 from app.models.user import User
 from app.repositories.attendance import AttendanceRepository
@@ -109,10 +111,36 @@ def create_child(
     try:
         service = ChildService(db)
         child = service.create_child(
+            current_user,
             request.first_name, request.last_name, request.birth_date,
             request.gender, request.address
         )
         return child
+    except ApplicationException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
+
+@router.post("/parents", response_model=ParentResponse, status_code=status.HTTP_201_CREATED)
+def create_parent_account(
+    request: ParentCreateRequest,
+    current_user: User = Depends(get_current_kindergarten_user),
+    db: Session = Depends(get_db),
+):
+    """Create a parent account inside the current kindergarten tenant."""
+    try:
+        service = AuthService(db)
+        parent = service.create_parent_account(
+            current_user=current_user,
+            first_name=request.first_name,
+            last_name=request.last_name,
+            phone_number=request.phone,
+            password=request.password,
+            email=request.email,
+            address=request.address,
+            birth_date=request.birth_date,
+            child_ids=request.child_ids,
+        )
+        return parent
     except ApplicationException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
 

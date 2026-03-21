@@ -18,12 +18,20 @@ class ChildRepository(BaseRepository):
         """Get child by child_id."""
         return self.get_by_id_field('child_id', child_id)
     
-    def create_child(self, child_id: str, first_name: str, last_name: str,
-                    birth_date: date, gender: Optional[str] = None,
-                    address: Optional[str] = None) -> Child:
+    def create_child(
+        self,
+        child_id: str,
+        first_name: str,
+        last_name: str,
+        birth_date: date,
+        gender: Optional[str] = None,
+        address: Optional[str] = None,
+        kindergarten_id: Optional[str] = None,
+    ) -> Child:
         """Create a new child."""
         child = Child(
             child_id=child_id,
+            kindergarten_id=kindergarten_id,
             first_name=first_name,
             last_name=last_name,
             birth_date=birth_date,

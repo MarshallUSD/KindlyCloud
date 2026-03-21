@@ -1,5 +1,5 @@
 """Group schemas."""
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import Optional, List
 from datetime import date, datetime, time
 
@@ -7,6 +7,7 @@ from datetime import date, datetime, time
 class GroupCreateRequest(BaseModel):
     """Create group request."""
     group_name: str = Field(..., min_length=1, max_length=100)
+    teacher_id: Optional[str] = None
     teacher_ids: List[str] = Field(default_factory=list)
     start_date: date
     end_date: Optional[date] = None
@@ -18,6 +19,12 @@ class GroupCreateRequest(BaseModel):
     monthly_fee: Optional[float] = None
     active_time_start: Optional[time] = None
     active_time_end: Optional[time] = None
+
+    @model_validator(mode="after")
+    def normalize_teacher_ids(self):
+        if self.teacher_id and not self.teacher_ids:
+            self.teacher_ids = [self.teacher_id]
+        return self
 
 
 class GroupUpdateRequest(BaseModel):

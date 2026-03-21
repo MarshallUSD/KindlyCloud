@@ -1,8 +1,8 @@
 """Child and related models."""
-from datetime import datetime, date
+from datetime import datetime
 from enum import Enum
-from sqlalchemy import Column, String, DateTime, Date, ForeignKey, Enum as SQLEnum, Text
-from sqlalchemy import Enum as SQLEnum
+
+from sqlalchemy import Column, Date, DateTime, Enum as SQLEnum, ForeignKey, String, Text
 from sqlalchemy.orm import relationship
 
 from app.core.base import Base
@@ -20,6 +20,7 @@ class Child(Base):
     __tablename__ = "children"
     
     child_id = Column(String, primary_key=True, index=True)
+    kindergarten_id = Column(String, ForeignKey("kindergartens.kindergarten_id"), nullable=True, index=True)
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
     birth_date = Column(Date, nullable=False)
@@ -31,6 +32,7 @@ class Child(Base):
     
     # Relationships
     parent_links = relationship("ParentChildLink", back_populates="child", cascade="all, delete-orphan")
+    kindergarten = relationship("Kindergarten")
     enrollments = relationship("Enrollment", back_populates="child", cascade="all, delete-orphan")
     attendance_records = relationship("Attendance", back_populates="child", cascade="all, delete-orphan")
     feedback_for = relationship("Feedback", back_populates="for_child", foreign_keys="Feedback.child_id")

@@ -1,21 +1,20 @@
 # app/core/db.py
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.core.base import Base
+from config import settings
 
-# 1) DATABASE_URL ni olamiz (env bo'lmasa - hardcode fallback)
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://kindergarten:0ha8oxyPXxSe2DCl1efWU27R0YSxIiiG@dpg-d6jcj1s50q8c739ju3m0-a.singapore-postgres.render.com/kindlycloud",
-)
+DATABASE_URL = settings.DATABASE_URL
 
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is not set")
 
-# 2) engine yaratamiz
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+engine_kwargs = {"pool_pre_ping": True}
+if DATABASE_URL.startswith("sqlite"):
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
+
+engine = create_engine(DATABASE_URL, **engine_kwargs)
 
 # 3) SessionLocal yaratamiz
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

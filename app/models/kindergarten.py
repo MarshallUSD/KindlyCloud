@@ -1,6 +1,6 @@
 """Kindergarten models."""
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, Integer, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
@@ -40,7 +40,7 @@ class KindergartenUser(Base):
     __tablename__ = "kindergarten_users"
     
     kindergarten_user_id = Column(String, primary_key=True, index=True)
-    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     kindergarten_id = Column(String, ForeignKey("kindergartens.kindergarten_id"), nullable=False, index=True)
     position = Column(String(100), nullable=True)  # e.g., "Director", "Staff"
     is_owner = Column(Boolean, default=False, nullable=False)

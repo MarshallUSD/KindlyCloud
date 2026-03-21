@@ -34,6 +34,7 @@ class GroupService:
             group_id=group_id,
             kindergarten_id=kinder.kindergarten_id,
             group_name=group_name,
+            teacher_id=teacher_ids[0] if teacher_ids else None,
             start_date=start_date,
             end_date=end_date,
             schedule=schedule,

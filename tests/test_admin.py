@@ -6,7 +6,7 @@ from fastapi import status
 def test_create_admin_post(client, test_admin_token, test_kindergarten):
     """Test creating an admin post."""
     response = client.post(
-        "/api/v1/auth/admin/posts",
+        "/api/v1/admin/posts",
         json={
             "title": "Important Announcement",
             "body": "This is an important announcement for all kindergartens.",
@@ -23,7 +23,7 @@ def test_create_admin_post(client, test_admin_token, test_kindergarten):
 def test_non_admin_cannot_create_post(client, test_parent_user_token):
     """Test that non-admin users cannot create admin posts."""
     response = client.post(
-        "/api/v1/auth/admin/posts",
+        "/api/v1/admin/posts",
         json={
             "title": "Test Post",
             "body": "This should fail"
@@ -36,7 +36,7 @@ def test_non_admin_cannot_create_post(client, test_parent_user_token):
 def test_list_feedback_as_admin(client, test_admin_token):
     """Test listing feedback as admin."""
     response = client.get(
-        "/api/v1/auth/admin/feedback",
+        "/api/v1/admin/feedback",
         headers={"Authorization": f"Bearer {test_admin_token}"}
     )
     assert response.status_code == status.HTTP_200_OK
