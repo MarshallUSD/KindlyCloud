@@ -43,3 +43,28 @@ def test_list_feedback_as_admin(client, test_admin_token):
     data = response.json()
     assert "items" in data
     assert "total" in data
+
+
+def test_admin_verification_changes_access_correctly(
+    client, test_admin_token, test_kindergarten_user, test_kindergarten_user_token, test_unverified_kindergarten
+):
+    """Admin verification flips operational access for the kindergarten user."""
+    before_response = client.get(
+        "/api/v1/kindergartens/groups",
+        headers={"Authorization": f"Bearer {test_kindergarten_user_token}"}
+    )
+    assert before_response.status_code == status.HTTP_403_FORBIDDEN
+    assert before_response.json()["detail"] == "Kindergarten account is pending verification"
+
+    verify_response = client.post(
+        f"/api/v1/admin/verify-kindergarten/{test_kindergarten_user.user_id}",
+        headers={"Authorization": f"Bearer {test_admin_token}"}
+    )
+    assert verify_response.status_code == status.HTTP_200_OK
+    assert verify_response.json()["message"] == "Kindergarten verified"
+
+    after_response = client.get(
+        "/api/v1/kindergartens/groups",
+        headers={"Authorization": f"Bearer {test_kindergarten_user_token}"}
+    )
+    assert after_response.status_code == status.HTTP_200_OK

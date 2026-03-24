@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 
-from app.core.dependencies import get_db, get_current_user, get_current_kindergarten_user
+from app.core.dependencies import get_db, get_current_kindergarten_user, get_verified_kindergarten_user
 from app.schemas.kindergarten import KindergartenCreateRequest, KindergartenUpdateRequest, KindergartenResponse
 from app.schemas.group import GroupCreateRequest, GroupUpdateRequest, GroupResponse
 from app.schemas.child import ChildCreateRequest, ChildUpdateRequest, ChildResponse
@@ -62,7 +62,7 @@ def get_my_kindergarten(
 @router.post("/groups", response_model=GroupResponse, status_code=status.HTTP_201_CREATED)
 def create_group(
     request: GroupCreateRequest,
-    current_user: User = Depends(get_current_kindergarten_user),
+    current_user: User = Depends(get_verified_kindergarten_user),
     db: Session = Depends(get_db)
 ):
     """Create a group."""
@@ -83,7 +83,7 @@ def create_group(
 def list_groups(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
-    current_user: User = Depends(get_current_kindergarten_user),
+    current_user: User = Depends(get_verified_kindergarten_user),
     db: Session = Depends(get_db)
 ):
     """List groups."""
@@ -104,7 +104,7 @@ def list_groups(
 @router.post("/children", response_model=ChildResponse, status_code=status.HTTP_201_CREATED)
 def create_child(
     request: ChildCreateRequest,
-    current_user: User = Depends(get_current_kindergarten_user),
+    current_user: User = Depends(get_verified_kindergarten_user),
     db: Session = Depends(get_db)
 ):
     """Create child record."""
@@ -123,7 +123,7 @@ def create_child(
 @router.post("/parents", response_model=ParentResponse, status_code=status.HTTP_201_CREATED)
 def create_parent_account(
     request: ParentCreateRequest,
-    current_user: User = Depends(get_current_kindergarten_user),
+    current_user: User = Depends(get_verified_kindergarten_user),
     db: Session = Depends(get_db),
 ):
     """Create a parent account inside the current kindergarten tenant."""
@@ -148,7 +148,7 @@ def create_parent_account(
 @router.post("/enrollments", response_model=EnrollmentResponse, status_code=status.HTTP_201_CREATED)
 def create_enrollment(
     request: EnrollmentCreateRequest,
-    current_user: User = Depends(get_current_kindergarten_user),
+    current_user: User = Depends(get_verified_kindergarten_user),
     db: Session = Depends(get_db)
 ):
     """Create enrollment."""
@@ -166,7 +166,7 @@ def create_enrollment(
 @router.post("/attendance", response_model=AttendanceResponse, status_code=status.HTTP_201_CREATED)
 def create_attendance(
     request: AttendanceCreateRequest,
-    current_user: User = Depends(get_current_kindergarten_user),
+    current_user: User = Depends(get_verified_kindergarten_user),
     db: Session = Depends(get_db)
 ):
     """Mark attendance."""
@@ -200,7 +200,7 @@ def create_attendance(
 @router.post("/menus", response_model=MenuResponse,status_code=status.HTTP_201_CREATED)
 def create_menu(
     request: MenuCreateRequest,
-    current_user: User = Depends(get_current_kindergarten_user),
+    current_user: User = Depends(get_verified_kindergarten_user),
     db: Session = Depends(get_db)
 ):
     """Create menu."""

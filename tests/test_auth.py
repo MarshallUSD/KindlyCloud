@@ -34,6 +34,20 @@ def test_login_success(client, test_kindergarten_user):
     assert "access_token" in data
 
 
+def test_unverified_kindergarten_can_log_in(client, test_unverified_kindergarten):
+    """Unverified kindergarten users can still authenticate."""
+    response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "kinder@test.com",
+            "password": "password123"
+        }
+    )
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert "access_token" in data
+
+
 def test_login_invalid_credentials(client):
     """Test kindergarten login with invalid credentials."""
     response = client.post(

@@ -1,126 +1,156 @@
-# 🌈KindlyCloud
-Kindergarten Management System (SaaS) A role-based web and mobile platform for managing kindergartens, parents, children, attendance, payments, and daily menus. Built with scalable architecture and secure authentication.
+# KindlyCloud
 
-# Kindergarten Management System (SaaS)
+KindlyCloud is a FastAPI backend for a role-based kindergarten management platform. It provides authentication, tenant-aware kindergarten operations, parent access, and internal admin controls.
 
-A scalable, role-based Kindergarten Management Platform designed for managing kindergartens, parents, children, attendance, payments, and notifications.
+## Stack
 
-Built with modern backend architecture using FastAPI and PostgreSQL.
+- FastAPI
+- SQLAlchemy
+- JWT authentication
+- PostgreSQL in app design
+- SQLite used in tests
 
----
+## Roles
 
-## 🚀 Features
+The backend supports three roles:
 
-### 🔐 Role-Based Authentication
-- Admin
-- Kindergarten
-- Parent
+- `admin`
+- `kindergarten`
+- `parent`
 
-Secure JWT-based authentication system with role-based access control.
+Authentication identifies the current user from a bearer token. Authorization is then enforced with route dependencies based on role and, for kindergarten users, verification status.
 
----
+## Authentication And Authorization
 
-### 🏫 Kindergarten Panel
--Dashboard
-- Manage groups CRUD
-- Assign pedagogues  CRUD
-- Track attendance CRUD
-- Parents 
-- Plan daily menus CRUD
-- Children
-- Receive and respond to feedback CRUD
--Tracking payments
-- Create announcements/posts
-- Configure business profile & payment info GET/PUT/POST
+### Shared authentication
 
+`get_current_user` in [app/core/dependencies.py](/d:/Documents2/KindlyCloud/app/core/dependencies.py) decodes the JWT, checks it is an access token, loads the user from the database, and blocks inactive users.
 
----
+### Kindergarten authorization
 
-### 👨‍👩‍👧 Parent   Telegram Bot App
-- Authentication via phone/email
-- View child's group & assigned pedagogue
-- View daily menu
-- Receive notifications:
-  - Attendance updates
-  - Payment reminders
-  - Pickup reminders
-- Make online payments
+- `get_current_kindergarten_user`: requires an authenticated user with `role=kindergarten`
+- `get_verified_kindergarten_user`: requires `role=kindergarten` and a linked kindergarten with `is_verified=True`
 
----
+If a kindergarten account is not yet verified, protected operational routes return:
 
-### 👑 Admin Dashboard
-- Monitor all kindergartens
-- View analytics & system dashboard
-- Verify institutions
-- Manage feedback
-- Remove or confirm kindergartens
+`403 Forbidden`
 
----
+`"Kindergarten account is pending verification"`
 
-## 🧱 Tech Stack
+### Parent authorization
 
-- **Backend:** FastAPI
-- **Database:** PostgreSQL
-- **ORM:** SQLAlchemy
-- **Authentication:** JWT
-- **Deployment:** (planned)
+`get_current_parent_user` requires an authenticated user with `role=parent`.
 
----
+### Admin authorization
 
-## 🗂 Database Design
+`get_current_admin` requires an admin token and an active admin record.
 
-- Users (central authentication system)
-- Parents
-- Kindergartens
-- Pedagogues
-- Children
-- Groups
-- Enrollment
-- Attendance
-- Payments
-- Notifications
-- Feedback
+## Real Backend Behavior
 
----
+This README reflects the current codebase behavior:
 
-## 📈 Architecture
+- Kindergarten users register with email and password
+- Kindergarten users log in with email and password
+- Parent users log in with phone number and password
+- Admin users log in with email and password
+- Kindergarten verification is enforced in backend authorization, not by frontend-only checks
+- Admin verifies kindergartens through an admin endpoint
 
-Multi-tenant architecture with centralized authentication and role-based access control.
+Not currently implemented in backend code:
 
-Separate frontends:
-- Parent Telegram Bot App
-- Kindergarten Web Panel
-- Admin Web Dashboard
+- OTP login flow
+- automatic verification emails
+- multiple kindergartens per one business owner account
 
----
-## Updates
+## Main Routes
 
-Parent during the authentication, enters phone number, receives OTP, enters OTP, enters password, confirms password, and is logged in.
+### Auth
 
-Kindergarten can attach its created pedagogues to groups.
+- `POST /api/v1/auth/register` - register a kindergarten-side user
+- `POST /api/v1/auth/login` - kindergarten login
+- `POST /api/v1/auth/parent-login` - parent login
+- `POST /api/v1/auth/refresh` - refresh token
+- `POST /api/v1/auth/logout` - logout
+- `GET /api/v1/auth/me` - return current authenticated subject
 
-During the creating group, kindergaten can add extra info about group such as age from-to, capacity, room number, monthly fee, active time (8.30-17.30) based on active time parent can get notification when child is late or early.
+### Kindergarten
 
-During the kindergarten authentication, first comes with email or phone number and password, then system checks if the kindergarten is verified, if not, it will send a verification email to the admin, if verified, it will send a verification email to the kindergarten. Then enters its kindergarten info such as name, address[region, city, district, street, payment info.]
+Allowed for authenticated kindergarten users:
 
-Kindergarten is business account, so one business owner can have multiple kindergartens.
+- `POST /api/v1/kindergartens/` - create kindergarten profile
+- `GET /api/v1/kindergartens/me` - get own kindergarten profile
 
-Parents can have multiple children, and each child can have multiple parents.
+Allowed only for verified kindergarten users:
 
+- `POST /api/v1/kindergartens/groups`
+- `GET /api/v1/kindergartens/groups`
+- `POST /api/v1/kindergartens/children`
+- `POST /api/v1/kindergartens/parents`
+- `POST /api/v1/kindergartens/enrollments`
+- `POST /api/v1/kindergartens/attendance`
+- `POST /api/v1/kindergartens/menus`
 
----
+### Parent
 
-## 🎯 Future Improvements
+- `GET /api/v1/parent/children`
+- `GET /api/v1/parent/menus/today`
+- `POST /api/v1/parent/payments`
+- `GET /api/v1/parent/payments`
 
-- Payment gateway integration
-- Push notifications
-- Analytics dashboard
-- Subscription-based SaaS model
-- Docker deployment
-- CI/CD pipeline
+### Admin
 
----
+- `POST /api/v1/admin/auth/login`
+- `POST /api/v1/admin/posts`
+- `GET /api/v1/admin/feedback`
+- `PATCH /api/v1/admin/feedback/{feedback_id}`
+- `POST /api/v1/admin/verify-kindergarten/{user_id}`
 
-## 📌 Status
+## Data Model Summary
 
-🚧 In Development (MVP Phase)
+Core auth and tenant relationships:
+
+- `users`: central authentication records with a `role`
+- `kindergartens`: kindergarten business profile with `is_verified`
+- `kindergarten_users`: links a user to a kindergarten
+- `parents`: parent profile
+- `parent_users`: links a user to a parent profile
+
+Operational entities include:
+
+- `groups`
+- `children`
+- `enrollments`
+- `attendance`
+- `menus`
+- `payments`
+- `feedback`
+- `posts`
+
+## Verification Rules
+
+Kindergarten verification is enforced like this:
+
+1. A kindergarten user can register and log in before verification.
+2. An unverified kindergarten user can access `/api/v1/auth/me`.
+3. An unverified kindergarten user can access `/api/v1/kindergartens/me`.
+4. An unverified kindergarten user cannot access operational kindergarten endpoints.
+5. An admin can verify the kindergarten through `/api/v1/admin/verify-kindergarten/{user_id}`.
+6. After verification, normal kindergarten operational access is allowed.
+
+## Running Tests
+
+From the project root:
+
+```powershell
+venv\Scripts\pytest.exe
+```
+
+The verification behavior is covered by tests in:
+
+- [tests/test_auth.py](/d:/Documents2/KindlyCloud/tests/test_auth.py)
+- [tests/test_kindergarten.py](/d:/Documents2/KindlyCloud/tests/test_kindergarten.py)
+- [tests/test_admin.py](/d:/Documents2/KindlyCloud/tests/test_admin.py)
+
+## Project Status
+
+Backend MVP is in active development. The implemented behavior should be treated as the source of truth over older documentation.

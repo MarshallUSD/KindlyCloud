@@ -15,6 +15,7 @@ from app.repositories.parent import ParentRepository
 from app.repositories.user import UserRepository
 
 security = HTTPBearer()
+KINDERGARTEN_VERIFICATION_PENDING_DETAIL = "Kindergarten account is pending verification"
 
 
 def get_db() -> Session:
@@ -98,6 +99,20 @@ async def get_current_kindergarten_user(current_user: User = Depends(get_current
     """Dependency to ensure current user is a kindergarten user."""
     if current_user.role != UserRole.KINDERGARTEN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Kindergarten role required")
+    return current_user
+
+
+async def get_verified_kindergarten_user(
+    current_user: User = Depends(get_current_kindergarten_user),
+    db: Session = Depends(get_db),
+) -> User:
+    """Dependency to ensure current kindergarten user belongs to a verified kindergarten."""
+    kindergarten = KindergartenRepository(db).get_by_user_id(current_user.user_id)
+    if not kindergarten or not kindergarten.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=KINDERGARTEN_VERIFICATION_PENDING_DETAIL,
+        )
     return current_user
 
 

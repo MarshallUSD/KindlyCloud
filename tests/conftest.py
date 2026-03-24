@@ -144,7 +144,8 @@ def test_kindergarten(db_session, test_kindergarten_user):
         address="Test Address",
         phone="+998901111111",
         email="testkinder@test.com",
-        payment_note="Monthly"
+        payment_note="Monthly",
+        is_verified=True,
     )
     db_session.add(kindergarten)
     
@@ -153,6 +154,36 @@ def test_kindergarten(db_session, test_kindergarten_user):
         kindergarten_user_id=kinder_user_id,
         user_id=test_kindergarten_user.user_id,
         kindergarten_id=kindergarten_id
+    )
+    db_session.add(kinder_user)
+    db_session.commit()
+    db_session.refresh(kindergarten)
+    return kindergarten
+
+
+@pytest.fixture
+def test_unverified_kindergarten(db_session, test_kindergarten_user):
+    """Create an unverified kindergarten linked to the default kindergarten user."""
+    from app.models.kindergarten import Kindergarten, KindergartenUser
+
+    kindergarten_id = str(uuid.uuid4())
+    kindergarten = Kindergarten(
+        kindergarten_id=kindergarten_id,
+        kinder_name="Pending Kindergarten",
+        region="Tashkent",
+        district="Mirzo-Ulugbek",
+        address="Pending Address",
+        phone="+998902222222",
+        email="pendingkinder@test.com",
+        payment_note="Pending",
+        is_verified=False,
+    )
+    db_session.add(kindergarten)
+
+    kinder_user = KindergartenUser(
+        kindergarten_user_id=str(uuid.uuid4()),
+        user_id=test_kindergarten_user.user_id,
+        kindergarten_id=kindergarten_id,
     )
     db_session.add(kinder_user)
     db_session.commit()
