@@ -42,18 +42,20 @@ def test_create_group(client, test_kindergarten_user_token, test_kindergarten, t
     response = client.post(
         "/api/v1/kindergartens/groups",
         json={
-            "group_name": "Rainbow Group",
+            "name": "Rainbow Group",
+            "age_from": 3,
+            "age_to": 5,
+            "capacity": 20,
+            "schedule_from": "08:00:00",
+            "schedule_to": "18:00:00",
+            "monthly_fee": "500000",
             "teacher_id": test_pedagogue.teacher_id,
-            "start_date": "2026-03-01",
-            "end_date": "2026-12-31",
-            "schedule": "Monday-Friday 8:00-18:00",
-            "max_capacity": 20
         },
         headers={"Authorization": f"Bearer {test_kindergarten_user_token}"}
     )
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
-    assert data["group_name"] == "Rainbow Group"
+    assert data["name"] == "Rainbow Group"
 
 
 def test_list_groups(client, test_kindergarten_user_token, test_group):
@@ -68,14 +70,15 @@ def test_list_groups(client, test_kindergarten_user_token, test_group):
     assert len(data["items"]) >= 1
 
 
-def test_create_child(client, test_kindergarten_user_token, test_kindergarten):
+def test_create_child(client, test_kindergarten_user_token, test_kindergarten, test_group):
     """Test creating a child."""
     response = client.post(
         "/api/v1/kindergartens/children",
         json={
-            "first_name": "Ali",
-            "last_name": "Karimov",
+            "full_name": "Ali Karimov",
             "birth_date": "2021-05-15",
+            "parent_phone": "+998901234567",
+            "group_id": test_group.group_id,
             "gender": "male",
             "address": "456 Park Avenue"
         },
@@ -83,8 +86,7 @@ def test_create_child(client, test_kindergarten_user_token, test_kindergarten):
     )
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
-    assert data["first_name"] == "Ali"
-    assert data["last_name"] == "Karimov"
+    assert data["full_name"] == "Ali Karimov"
 
 
 def test_create_enrollment(client, test_kindergarten_user_token, test_child, test_group):
@@ -146,14 +148,16 @@ def test_unverified_kindergarten_can_access_kindergarten_me(
         ("get", "/api/v1/kindergartens/groups", None, ("test_unverified_kindergarten",)),
         (
             "post",
-            "/api/v1/kindergartens/groups",
+                "/api/v1/kindergartens/groups",
             {
-                "group_name": "Pending Group",
+                "name": "Pending Group",
+                "age_from": 3,
+                "age_to": 5,
+                "capacity": 20,
+                "schedule_from": "08:00:00",
+                "schedule_to": "18:00:00",
+                "monthly_fee": "500000",
                 "teacher_id": "{teacher_id}",
-                "start_date": "2026-03-01",
-                "end_date": "2026-12-31",
-                "schedule": "Monday-Friday 8:00-18:00",
-                "max_capacity": 20,
             },
             ("test_unverified_kindergarten", "test_pedagogue"),
         ),
@@ -161,13 +165,14 @@ def test_unverified_kindergarten_can_access_kindergarten_me(
             "post",
             "/api/v1/kindergartens/children",
             {
-                "first_name": "Ali",
-                "last_name": "Karimov",
+                "full_name": "Ali Karimov",
                 "birth_date": "2021-05-15",
+                "parent_phone": "+998901234567",
+                "group_id": "{group_id}",
                 "gender": "male",
                 "address": "456 Park Avenue",
             },
-            ("test_unverified_kindergarten",),
+            ("test_unverified_kindergarten", "test_group"),
         ),
         (
             "post",

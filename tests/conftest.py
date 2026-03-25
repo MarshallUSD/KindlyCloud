@@ -195,16 +195,17 @@ def test_unverified_kindergarten(db_session, test_kindergarten_user):
 def test_pedagogue(db_session, test_kindergarten):
     """Create test pedagogue."""
     from app.models.pedagogue import Pedagogue
-    from datetime import date
     
     teacher_id = str(uuid.uuid4())
     pedagogue = Pedagogue(
         teacher_id=teacher_id,
         kindergarten_id=test_kindergarten.kindergarten_id,
+        full_name="Maria Ivanova",
+        phone="+998901234500",
+        experience_year=6,
         first_name="Maria",
         last_name="Ivanova",
         email="maria@test.com",
-        hire_date=date(2020, 1, 1)
     )
     db_session.add(pedagogue)
     db_session.commit()
@@ -236,7 +237,7 @@ def test_group(db_session, test_kindergarten, test_pedagogue):
 
 
 @pytest.fixture
-def test_child(db_session):
+def test_child(db_session, test_kindergarten, test_group):
     """Create test child."""
     from app.models.child import Child
     from datetime import date
@@ -244,6 +245,10 @@ def test_child(db_session):
     child_id = str(uuid.uuid4())
     child = Child(
         child_id=child_id,
+        kindergarten_id=test_kindergarten.kindergarten_id,
+        group_id=test_group.group_id,
+        full_name="Aziz Rahimov",
+        parent_phone="+998901111222",
         first_name="Aziz",
         last_name="Rahimov",
         birth_date=date(2021, 3, 15),

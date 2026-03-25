@@ -1,106 +1,171 @@
 """Group service."""
 import uuid
-from typing import Optional, List, Tuple
+from typing import Tuple
+
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import AuthorizationException, NotFoundException, ValidationException
+from app.models.child import Child
 from app.models.group import Group
+from app.models.pedagogue import Pedagogue
 from app.models.user import User
-from app.repositories.group import GroupRepository
 from app.repositories.kindergarten import KindergartenRepository
-from app.core.exceptions import NotFoundException, AuthorizationException
+from app.schemas.group import GroupCreateRequest, GroupUpdateRequest
 
 
 class GroupService:
-    """Service for group management."""
-    
+    """Service for tenant-safe group management."""
+
     def __init__(self, db: Session):
         self.db = db
-        self.group_repo = GroupRepository(db)
         self.kindergarten_repo = KindergartenRepository(db)
-    
-    def create_group(self, current_user: User, group_name: str, teacher_ids: List[str],
-                    start_date, end_date=None, schedule: Optional[str] = None,
-                    max_capacity: Optional[int] = None, age_from: Optional[int] = None,
-                    age_to: Optional[int] = None, room_number: Optional[str] = None,
-                    monthly_fee: Optional[float] = None, active_time_start=None,
-                    active_time_end=None) -> Group:
-        """Create a new group (kindergarten staff only)."""
-        kinder = self.kindergarten_repo.get_by_user_id(current_user.user_id)
-        if not kinder:
+
+    def _get_current_kindergarten_id(self, current_user: User) -> str:
+        kindergarten = self.kindergarten_repo.get_by_user_id(current_user.user_id)
+        if not kindergarten:
             raise AuthorizationException("User does not belong to a kindergarten")
-        
-        group_id = str(uuid.uuid4())
-        group = self.group_repo.create_group(
-            group_id=group_id,
-            kindergarten_id=kinder.kindergarten_id,
-            group_name=group_name,
-            teacher_id=teacher_ids[0] if teacher_ids else None,
-            start_date=start_date,
-            end_date=end_date,
-            schedule=schedule,
-            max_capacity=max_capacity,
-            age_from=age_from,
-            age_to=age_to,
-            room_number=room_number,
-            monthly_fee=monthly_fee,
-            active_time_start=active_time_start,
-            active_time_end=active_time_end
+        return kindergarten.kindergarten_id
+
+    def _get_scoped_group(self, kindergarten_id: str, group_id: str) -> Group:
+        group = (
+            self.db.query(Group)
+            .filter(Group.group_id == group_id, Group.kindergarten_id == kindergarten_id)
+            .first()
         )
-        
-        from app.models.group import PedagogueGroupLink
-        for t_id in teacher_ids:
-            link_id = str(uuid.uuid4())
-            link = PedagogueGroupLink(
-                link_id=link_id,
-                teacher_id=t_id,
-                group_id=group.group_id
-            )
-            self.db.add(link)
-        self.db.commit()
-        return group
-    
-    def get_group(self, group_id: str) -> Group:
-        """Get group by ID."""
-        group = self.group_repo.get_by_id(group_id)
         if not group:
             raise NotFoundException("Group not found")
         return group
-    
-    def update_group(self, current_user: User, group_id: str, **kwargs) -> Group:
-        """Update group."""
-        group = self.get_group(group_id)
-        
-        # Check authorization
-        kinder = self.kindergarten_repo.get_by_user_id(current_user.user_id)
-        if not kinder or kinder.kindergarten_id != group.kindergarten_id:
-            raise AuthorizationException("You do not have permission to update this group")
-        
-        for key, value in kwargs.items():
-            if value is not None and hasattr(group, key):
-                setattr(group, key, value)
-        
+
+    def _get_scoped_teacher(self, kindergarten_id: str, teacher_id: str) -> Pedagogue:
+        teacher = (
+            self.db.query(Pedagogue)
+            .filter(Pedagogue.teacher_id == teacher_id, Pedagogue.kindergarten_id == kindergarten_id)
+            .first()
+        )
+        if not teacher:
+            raise ValidationException("Teacher not found in your kindergarten")
+        return teacher
+
+    def _sync_primary_teacher(self, group: Group, teacher: Pedagogue | None) -> None:
+        group.teacher_id = teacher.teacher_id if teacher else None
+        if teacher:
+            teacher.group_id = group.group_id
+
+    def create_group(self, current_user: User, payload: GroupCreateRequest) -> Group:
+        """Create a group for the current kindergarten tenant."""
+        kindergarten_id = self._get_current_kindergarten_id(current_user)
+
+        group = Group(
+            group_id=str(uuid.uuid4()),
+            kindergarten_id=kindergarten_id,
+            group_name=payload.name,
+            age_from=payload.age_from,
+            age_to=payload.age_to,
+            max_capacity=int(payload.capacity),
+            active_time_start=payload.schedule_from,
+            active_time_end=payload.schedule_to,
+            monthly_fee=float(payload.monthly_fee),
+            start_date=current_user.created_at.date(),
+        )
+
+        if payload.teacher_id:
+            teacher = self._get_scoped_teacher(kindergarten_id, payload.teacher_id)
+            self._sync_primary_teacher(group, teacher)
+
+        self.db.add(group)
         self.db.commit()
         self.db.refresh(group)
         return group
-    
-    def delete_group(self, current_user: User, group_id: str) -> bool:
-        """Delete group."""
-        group = self.get_group(group_id)
-        
-        # Check authorization
-        kinder = self.kindergarten_repo.get_by_user_id(current_user.user_id)
-        if not kinder or kinder.kindergarten_id != group.kindergarten_id:
-            raise AuthorizationException("You do not have permission to delete this group")
-        
+
+    def list_groups(
+        self,
+        current_user: User,
+        skip: int = 0,
+        limit: int = 20,
+    ) -> Tuple[list[Group], int]:
+        """List groups for the current tenant."""
+        kindergarten_id = self._get_current_kindergarten_id(current_user)
+        query = self.db.query(Group).filter(Group.kindergarten_id == kindergarten_id)
+        total = query.with_entities(func.count(Group.group_id)).scalar() or 0
+        items = query.order_by(Group.created_at.desc()).offset(skip).limit(limit).all()
+        return items, total
+
+    def get_group(self, current_user: User, group_id: str) -> Group:
+        """Get one group scoped to the current tenant."""
+        kindergarten_id = self._get_current_kindergarten_id(current_user)
+        return self._get_scoped_group(kindergarten_id, group_id)
+
+    def update_group(self, current_user: User, group_id: str, payload: GroupUpdateRequest) -> Group:
+        """Update a group inside the current tenant."""
+        kindergarten_id = self._get_current_kindergarten_id(current_user)
+        group = self._get_scoped_group(kindergarten_id, group_id)
+
+        data = payload.model_dump(exclude_unset=True, exclude_none=True)
+        if "name" in data:
+            group.group_name = data["name"]
+        if "age_from" in data:
+            group.age_from = data["age_from"]
+        if "age_to" in data:
+            group.age_to = data["age_to"]
+        if "capacity" in data:
+            child_count = (
+                self.db.query(func.count(Child.child_id))
+                .filter(Child.group_id == group.group_id, Child.kindergarten_id == kindergarten_id)
+                .scalar()
+                or 0
+            )
+            if data["capacity"] < child_count:
+                raise ValidationException("Group capacity cannot be lower than current child count")
+            group.max_capacity = int(data["capacity"])
+        if "schedule_from" in data:
+            group.active_time_start = data["schedule_from"]
+        if "schedule_to" in data:
+            group.active_time_end = data["schedule_to"]
+        if "monthly_fee" in data and data["monthly_fee"] is not None:
+            group.monthly_fee = float(data["monthly_fee"])
+
+        if "teacher_id" in data:
+            if data["teacher_id"]:
+                teacher = self._get_scoped_teacher(kindergarten_id, data["teacher_id"])
+                self._sync_primary_teacher(group, teacher)
+            else:
+                if group.teacher_id:
+                    old_teacher = (
+                        self.db.query(Pedagogue)
+                        .filter(
+                            Pedagogue.teacher_id == group.teacher_id,
+                            Pedagogue.kindergarten_id == kindergarten_id,
+                        )
+                        .first()
+                    )
+                    if old_teacher and old_teacher.group_id == group.group_id:
+                        old_teacher.group_id = None
+                group.teacher_id = None
+
+        self.db.commit()
+        self.db.refresh(group)
+        return group
+
+    def delete_group(self, current_user: User, group_id: str) -> None:
+        """Delete a group when it is no longer referenced."""
+        kindergarten_id = self._get_current_kindergarten_id(current_user)
+        group = self._get_scoped_group(kindergarten_id, group_id)
+
+        children_count = (
+            self.db.query(func.count(Child.child_id))
+            .filter(Child.group_id == group.group_id, Child.kindergarten_id == kindergarten_id)
+            .scalar()
+            or 0
+        )
+        teachers_count = (
+            self.db.query(func.count(Pedagogue.teacher_id))
+            .filter(Pedagogue.group_id == group.group_id, Pedagogue.kindergarten_id == kindergarten_id)
+            .scalar()
+            or 0
+        )
+        if children_count or teachers_count:
+            raise ValidationException("Group cannot be deleted while children or teachers are assigned")
+
         self.db.delete(group)
         self.db.commit()
-        return True
-    
-    def list_groups_for_kindergarten(self, current_user: User, skip: int = 0, 
-                                     limit: int = 20) -> Tuple[List[Group], int]:
-        """List groups for user's kindergarten."""
-        kinder = self.kindergarten_repo.get_by_user_id(current_user.user_id)
-        if not kinder:
-            raise AuthorizationException("User does not belong to a kindergarten")
-        
-        return self.group_repo.get_by_kindergarten(kinder.kindergarten_id, skip=skip, limit=limit)

@@ -1,5 +1,5 @@
-"""Child schemas."""
-from datetime import date, datetime
+"""Teacher schemas."""
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -14,19 +14,17 @@ def _split_full_name(full_name: str) -> tuple[Optional[str], Optional[str]]:
     return parts[0], " ".join(parts[1:])
 
 
-class ChildCreateRequest(BaseModel):
-    """Create child request."""
+class TeacherCreateRequest(BaseModel):
+    """Create teacher request."""
 
     model_config = ConfigDict(populate_by_name=True)
 
     full_name: Optional[str] = Field(None, min_length=2, max_length=200)
-    birth_date: date
-    parent_phone: str = Field(..., min_length=7, max_length=20)
-    group_id: str
+    phone: str = Field(..., min_length=7, max_length=20)
+    experience_year: Optional[int] = Field(None, ge=0, le=80)
+    group_id: Optional[str] = None
     first_name: Optional[str] = Field(None, min_length=1, max_length=100)
     last_name: Optional[str] = Field(None, min_length=1, max_length=100)
-    gender: Optional[str] = Field(None, description="male, female, or other")
-    address: Optional[str] = None
 
     @model_validator(mode="after")
     def normalize_name(self):
@@ -42,19 +40,17 @@ class ChildCreateRequest(BaseModel):
         return self
 
 
-class ChildUpdateRequest(BaseModel):
-    """Update child request."""
+class TeacherUpdateRequest(BaseModel):
+    """Update teacher request."""
 
     model_config = ConfigDict(populate_by_name=True)
 
     full_name: Optional[str] = Field(None, min_length=2, max_length=200)
-    birth_date: Optional[date] = None
-    parent_phone: Optional[str] = Field(None, min_length=7, max_length=20)
+    phone: Optional[str] = Field(None, min_length=7, max_length=20)
+    experience_year: Optional[int] = Field(None, ge=0, le=80)
     group_id: Optional[str] = None
     first_name: Optional[str] = Field(None, min_length=1, max_length=100)
     last_name: Optional[str] = Field(None, min_length=1, max_length=100)
-    gender: Optional[str] = None
-    address: Optional[str] = None
 
     @model_validator(mode="after")
     def normalize_name(self):
@@ -69,40 +65,18 @@ class ChildUpdateRequest(BaseModel):
         return self
 
 
-class ChildResponse(BaseModel):
-    """Child response schema."""
+class TeacherResponse(BaseModel):
+    """Teacher response schema."""
 
     model_config = ConfigDict(from_attributes=True)
 
-    child_id: str
+    teacher_id: str
     kindergarten_id: str
-    group_id: str
+    group_id: Optional[str]
     full_name: str
     first_name: Optional[str]
     last_name: Optional[str]
-    birth_date: date
-    parent_phone: str
-    gender: Optional[str]
-    address: Optional[str]
+    phone: str
+    experience_year: Optional[int]
     created_at: datetime
     updated_at: datetime
-
-
-class ParentChildLinkRequest(BaseModel):
-    """Link child to parent request."""
-
-    child_id: str
-    note: Optional[str] = None
-
-
-class ParentChildLinkResponse(BaseModel):
-    """Parent-child link response."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    link_id: str
-    parent_id: str
-    child_id: str
-    status: str
-    linked_at: datetime
-    note: Optional[str]

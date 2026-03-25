@@ -20,9 +20,12 @@ class Child(Base):
     __tablename__ = "children"
     
     child_id = Column(String, primary_key=True, index=True)
-    kindergarten_id = Column(String, ForeignKey("kindergartens.kindergarten_id"), nullable=True, index=True)
-    first_name = Column(String(100), nullable=False)
-    last_name = Column(String(100), nullable=False)
+    kindergarten_id = Column(String, ForeignKey("kindergartens.kindergarten_id"), nullable=False, index=True)
+    group_id = Column(String, ForeignKey("groups.group_id"), nullable=False, index=True)
+    full_name = Column(String(200), nullable=False, index=True)
+    parent_phone = Column(String(20), nullable=False)
+    first_name = Column(String(100), nullable=True)
+    last_name = Column(String(100), nullable=True)
     birth_date = Column(Date, nullable=False)
     gender = Column(String(10), nullable=True)  # "male", "female", "other"
     address = Column(Text, nullable=True)
@@ -32,7 +35,8 @@ class Child(Base):
     
     # Relationships
     parent_links = relationship("ParentChildLink", back_populates="child", cascade="all, delete-orphan")
-    kindergarten = relationship("Kindergarten")
+    kindergarten = relationship("Kindergarten", back_populates="children")
+    group = relationship("Group", back_populates="children")
     enrollments = relationship("Enrollment", back_populates="child", cascade="all, delete-orphan")
     attendance_records = relationship("Attendance", back_populates="child", cascade="all, delete-orphan")
     feedback_for = relationship("Feedback", back_populates="for_child", foreign_keys="Feedback.child_id")

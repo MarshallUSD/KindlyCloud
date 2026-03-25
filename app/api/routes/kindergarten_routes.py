@@ -1,28 +1,26 @@
-"""Kindergarten routes."""
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
 from typing import Optional
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_db, get_current_kindergarten_user, get_verified_kindergarten_user
-from app.schemas.kindergarten import KindergartenCreateRequest, KindergartenUpdateRequest, KindergartenResponse
-from app.schemas.group import GroupCreateRequest, GroupUpdateRequest, GroupResponse
-from app.schemas.child import ChildCreateRequest, ChildUpdateRequest, ChildResponse
+from app.core.exceptions import ApplicationException
+from app.models.user import User
+from app.schemas.base import PaginatedResponse
+from app.schemas.child import ChildCreateRequest, ChildResponse
 from app.schemas.enrollment import EnrollmentCreateRequest, EnrollmentResponse
+from app.schemas.group import GroupCreateRequest, GroupResponse
+from app.schemas.kindergarten import KindergartenCreateRequest, KindergartenResponse
 from app.schemas.attendance import AttendanceCreateRequest, AttendanceResponse
 from app.schemas.menu import MenuCreateRequest, MenuResponse
 from app.schemas.parent import ParentCreateRequest, ParentResponse
-from app.schemas.base import PaginatedResponse
-from app.services.kindergarten import KindergartenService
-from app.services.group import GroupService
+from app.services.auth import AuthService
 from app.services.child import ChildService
 from app.services.enrollment import EnrollmentService
+from app.services.group import GroupService
+from app.services.kindergarten import KindergartenService
 from app.services.menu import MenuService
-from app.services.auth import AuthService
-from app.core.exceptions import ApplicationException
-from app.models.user import User
-from app.repositories.attendance import AttendanceRepository
-import uuid
-from datetime import date
 
 router = APIRouter()
 
@@ -67,14 +65,7 @@ def create_group(
 ):
     """Create a group."""
     try:
-        service = GroupService(db)
-        group = service.create_group(
-            current_user, request.group_name, request.teacher_ids,
-            request.start_date, request.end_date, request.schedule, request.max_capacity,
-            request.age_from, request.age_to, request.room_number, request.monthly_fee,
-            request.active_time_start, request.active_time_end
-        )
-        return group
+        return GroupService(db).create_group(current_user, request)
     except ApplicationException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
 
@@ -88,8 +79,7 @@ def list_groups(
 ):
     """List groups."""
     try:
-        service = GroupService(db)
-        items, total = service.list_groups_for_kindergarten(current_user, skip, limit)
+        items, total = GroupService(db).list_groups(current_user, skip, limit)
         return {
             "items": items,
             "total": total,
@@ -109,13 +99,7 @@ def create_child(
 ):
     """Create child record."""
     try:
-        service = ChildService(db)
-        child = service.create_child(
-            current_user,
-            request.first_name, request.last_name, request.birth_date,
-            request.gender, request.address
-        )
-        return child
+        return ChildService(db).create_child(current_user, request)
     except ApplicationException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
 

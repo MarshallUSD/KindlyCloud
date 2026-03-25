@@ -1,11 +1,12 @@
 """Group/Class model."""
-from datetime import datetime, date
-from sqlalchemy import Column, String, DateTime, Date, ForeignKey, Integer, Text, Float, Time
-from sqlalchemy import Enum as SQLEnum
+from datetime import datetime
+
+from sqlalchemy import Column, Date, DateTime, Float, ForeignKey, Integer, String, Text, Time
 from sqlalchemy.orm import relationship
 
-
 from app.core.base import Base
+
+
 class Group(Base):
     """Group/Class model."""
     __tablename__ = "groups"
@@ -29,9 +30,52 @@ class Group(Base):
     
     # Relationships
     kindergarten = relationship("Kindergarten", back_populates="groups")
+    children = relationship("Child", back_populates="group")
+    teachers = relationship("Pedagogue", back_populates="group")
     pedagogue_links = relationship("PedagogueGroupLink", back_populates="group", cascade="all, delete-orphan")
     enrollments = relationship("Enrollment", back_populates="group", cascade="all, delete-orphan")
     group_menus = relationship("GroupMenu", back_populates="group", cascade="all, delete-orphan")
+
+    @property
+    def id(self) -> str:
+        """Compatibility alias for REST responses."""
+        return self.group_id
+
+    @property
+    def name(self) -> str:
+        """Compatibility alias for REST responses."""
+        return self.group_name
+
+    @name.setter
+    def name(self, value: str) -> None:
+        self.group_name = value
+
+    @property
+    def capacity(self) -> int | None:
+        """Compatibility alias for REST responses."""
+        return self.max_capacity
+
+    @capacity.setter
+    def capacity(self, value: int | None) -> None:
+        self.max_capacity = value
+
+    @property
+    def schedule_from(self):
+        """Compatibility alias for REST responses."""
+        return self.active_time_start
+
+    @schedule_from.setter
+    def schedule_from(self, value) -> None:
+        self.active_time_start = value
+
+    @property
+    def schedule_to(self):
+        """Compatibility alias for REST responses."""
+        return self.active_time_end
+
+    @schedule_to.setter
+    def schedule_to(self, value) -> None:
+        self.active_time_end = value
 
 
 class PedagogueGroupLink(Base):

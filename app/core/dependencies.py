@@ -116,6 +116,20 @@ async def get_verified_kindergarten_user(
     return current_user
 
 
+async def get_current_kindergarten(
+    current_user: User = Depends(get_current_kindergarten_user),
+    db: Session = Depends(get_db),
+):
+    """Resolve the current user's kindergarten tenant."""
+    kindergarten = KindergartenRepository(db).get_by_user_id(current_user.user_id)
+    if not kindergarten:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Kindergarten not found for current user",
+        )
+    return kindergarten
+
+
 async def get_current_parent_user(current_user: User = Depends(get_current_user)) -> User:
     """Dependency to ensure current user is a parent user."""
     if current_user.role != UserRole.PARENT:

@@ -36,8 +36,8 @@ class EnrollmentService:
             raise NotFoundException("Group not found or does not belong to your kindergarten")
         
         child = self.child_repo.get_by_id(child_id)
-        if not child:
-            raise NotFoundException("Child not found")
+        if not child or child.kindergarten_id != kinder.kindergarten_id:
+            raise NotFoundException("Child not found or does not belong to your kindergarten")
         
         enrol_id = str(uuid.uuid4())
         return self.enrollment_repo.create_enrollment(
