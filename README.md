@@ -1,86 +1,173 @@
 # KindlyCloud
 
-KindlyCloud is a FastAPI backend for a role-based kindergarten management platform. It provides authentication, tenant-aware kindergarten operations, parent access, and internal admin controls.
+KindlyCloud is a FastAPI backend for a multi-tenant kindergarten management platform. It supports JWT authentication, role-based access control, kindergarten verification, and tenant-safe operational APIs for groups, children, teachers, parents, enrollments, attendance, menus, and payments.
+
+## Current Scope
+
+Milestone 1 is completed:
+
+- JWT authentication
+- Roles: `admin`, `kindergarten`, `parent`
+- Only kindergarten users can access the main operational system
+
+Milestone 2 is completed:
+
+- Multi-tenant isolation by `kindergarten_id`
+- CRUD for groups, children, and teachers
+- Pagination on list endpoints
+- Filtering by `group_id`
+- Group capacity validation
+- Same-tenant validation for child, teacher, and group relationships
+- Automatic tenant assignment from the authenticated kindergarten user
 
 ## Stack
 
 - FastAPI
 - SQLAlchemy
+- Pydantic v2
 - JWT authentication
-- PostgreSQL in app design
+- Alembic
+- PostgreSQL-oriented backend design
 - SQLite used in tests
 
-## Roles
+## Architecture
 
-The backend supports three roles:
+The backend follows a layered structure:
+
+- `app/api/routes/` for FastAPI routers
+- `app/services/` for business logic
+- `app/models/` for SQLAlchemy models
+- `app/schemas/` for request and response models
+- `app/core/` for config, auth, dependencies, exceptions, and DB setup
+
+## Roles And Access
+
+The platform supports three roles:
 
 - `admin`
 - `kindergarten`
 - `parent`
 
-Authentication identifies the current user from a bearer token. Authorization is then enforced with route dependencies based on role and, for kindergarten users, verification status.
+Authorization is enforced through dependencies in [app/core/dependencies.py](d:/Documents2/KindlyCloud/app/core/dependencies.py).
 
-## Authentication And Authorization
+### Kindergarten access
 
-### Shared authentication
+- `get_current_kindergarten_user` requires an authenticated kindergarten user
+- `get_verified_kindergarten_user` requires a kindergarten user linked to a verified kindergarten
 
-`get_current_user` in [app/core/dependencies.py](/d:/Documents2/KindlyCloud/app/core/dependencies.py) decodes the JWT, checks it is an access token, loads the user from the database, and blocks inactive users.
+If a kindergarten is not verified, operational routes return:
 
-### Kindergarten authorization
+- `403 Forbidden`
+- `"Kindergarten account is pending verification"`
 
-- `get_current_kindergarten_user`: requires an authenticated user with `role=kindergarten`
-- `get_verified_kindergarten_user`: requires `role=kindergarten` and a linked kindergarten with `is_verified=True`
+### Parent access
 
-If a kindergarten account is not yet verified, protected operational routes return:
+- `get_current_parent_user` requires an authenticated parent user
 
-`403 Forbidden`
+### Admin access
 
-`"Kindergarten account is pending verification"`
+- `get_current_admin` requires a valid admin token and active admin record
 
-### Parent authorization
+## Multi-Tenant Rules
 
-`get_current_parent_user` requires an authenticated user with `role=parent`.
+Each kindergarten is a separate tenant.
 
-### Admin authorization
+All operational entities are scoped by `kindergarten_id`, and the backend enforces strict tenant isolation:
 
-`get_current_admin` requires an admin token and an active admin record.
+- clients cannot submit `kindergarten_id`
+- the backend derives `kindergarten_id` from the current authenticated kindergarten user
+- kindergarten users can only read and mutate their own tenant data
+- linked entities such as `group_id` and `teacher_id` must belong to the same tenant
+- child creation and reassignment respect group capacity
 
-## Real Backend Behavior
+## Core Models
 
-This README reflects the current codebase behavior:
+Key auth and tenant models:
 
-- Kindergarten users register with email and password
-- Kindergarten users log in with email and password
-- Parent users log in with phone number and password
-- Admin users log in with email and password
-- Kindergarten verification is enforced in backend authorization, not by frontend-only checks
-- Admin verifies kindergartens through an admin endpoint
+- `users`
+- `kindergartens`
+- `kindergarten_users`
+- `parents`
+- `parent_users`
 
-Not currently implemented in backend code:
+Operational models:
 
-- OTP login flow
-- automatic verification emails
-- multiple kindergartens per one business owner account
+- `groups`
+- `children`
+- `pedagogues` for teachers
+- `enrollments`
+- `attendance`
+- `menus`
+- `payments`
+- `feedback`
+- `posts`
+
+Teacher records currently support:
+
+- `full_name`
+- `phone`
+- `experience_year`
+- `group_id`
+- `kindergarten_id`
 
 ## Main Routes
 
 ### Auth
 
-- `POST /api/v1/auth/register` - register a kindergarten-side user
-- `POST /api/v1/auth/login` - kindergarten login
-- `POST /api/v1/auth/parent-login` - parent login
-- `POST /api/v1/auth/refresh` - refresh token
-- `POST /api/v1/auth/logout` - logout
-- `GET /api/v1/auth/me` - return current authenticated subject
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/parent-login`
+- `POST /api/v1/auth/refresh`
+- `POST /api/v1/auth/logout`
+- `GET /api/v1/auth/me`
 
-### Kindergarten
+### Admin
 
-Allowed for authenticated kindergarten users:
+- `POST /api/v1/admin/auth/login`
+- `POST /api/v1/admin/posts`
+- `GET /api/v1/admin/feedback`
+- `PATCH /api/v1/admin/feedback/{feedback_id}`
+- `POST /api/v1/admin/verify-kindergarten/{user_id}`
 
-- `POST /api/v1/kindergartens/` - create kindergarten profile
-- `GET /api/v1/kindergartens/me` - get own kindergarten profile
+### Kindergarten Profile
 
-Allowed only for verified kindergarten users:
+- `POST /api/v1/kindergartens/`
+- `GET /api/v1/kindergartens/me`
+
+### Milestone 2 CRUD
+
+These endpoints require a verified kindergarten user.
+
+Groups:
+
+- `POST /api/v1/groups/`
+- `GET /api/v1/groups/`
+- `GET /api/v1/groups/{group_id}`
+- `PUT /api/v1/groups/{group_id}`
+- `DELETE /api/v1/groups/{group_id}`
+
+Children:
+
+- `POST /api/v1/children/`
+- `GET /api/v1/children/`
+- `GET /api/v1/children/{child_id}`
+- `PUT /api/v1/children/{child_id}`
+- `DELETE /api/v1/children/{child_id}`
+
+Teachers:
+
+- `POST /api/v1/teachers/`
+- `GET /api/v1/teachers/`
+- `GET /api/v1/teachers/{teacher_id}`
+- `PUT /api/v1/teachers/{teacher_id}`
+- `DELETE /api/v1/teachers/{teacher_id}`
+
+Filters and pagination:
+
+- `skip` and `limit` are supported on list endpoints
+- `group_id` filtering is supported on `/children/` and `/teachers/`
+
+### Other Kindergarten Operations
 
 - `POST /api/v1/kindergartens/groups`
 - `GET /api/v1/kindergartens/groups`
@@ -97,60 +184,60 @@ Allowed only for verified kindergarten users:
 - `POST /api/v1/parent/payments`
 - `GET /api/v1/parent/payments`
 
-### Admin
+## Running Locally
 
-- `POST /api/v1/admin/auth/login`
-- `POST /api/v1/admin/posts`
-- `GET /api/v1/admin/feedback`
-- `PATCH /api/v1/admin/feedback/{feedback_id}`
-- `POST /api/v1/admin/verify-kindergarten/{user_id}`
+Install dependencies:
 
-## Data Model Summary
+```powershell
+pip install -r requirements.txt
+```
 
-Core auth and tenant relationships:
+Start the API:
 
-- `users`: central authentication records with a `role`
-- `kindergartens`: kindergarten business profile with `is_verified`
-- `kindergarten_users`: links a user to a kindergarten
-- `parents`: parent profile
-- `parent_users`: links a user to a parent profile
+```powershell
+uvicorn app.main:app --reload
+```
 
-Operational entities include:
+Useful URLs:
 
-- `groups`
-- `children`
-- `enrollments`
-- `attendance`
-- `menus`
-- `payments`
-- `feedback`
-- `posts`
-
-## Verification Rules
-
-Kindergarten verification is enforced like this:
-
-1. A kindergarten user can register and log in before verification.
-2. An unverified kindergarten user can access `/api/v1/auth/me`.
-3. An unverified kindergarten user can access `/api/v1/kindergartens/me`.
-4. An unverified kindergarten user cannot access operational kindergarten endpoints.
-5. An admin can verify the kindergarten through `/api/v1/admin/verify-kindergarten/{user_id}`.
-6. After verification, normal kindergarten operational access is allowed.
+- API: `http://localhost:8000`
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
 
 ## Running Tests
 
 From the project root:
 
 ```powershell
-venv\Scripts\pytest.exe
+venv\Scripts\pytest.exe -q
 ```
 
-The verification behavior is covered by tests in:
+Current verified test status in this workspace:
 
-- [tests/test_auth.py](/d:/Documents2/KindlyCloud/tests/test_auth.py)
-- [tests/test_kindergarten.py](/d:/Documents2/KindlyCloud/tests/test_kindergarten.py)
-- [tests/test_admin.py](/d:/Documents2/KindlyCloud/tests/test_admin.py)
+- `35 passed`
 
-## Project Status
+Relevant test files:
 
-Backend MVP is in active development. The implemented behavior should be treated as the source of truth over older documentation.
+- [tests/test_auth.py](d:/Documents2/KindlyCloud/tests/test_auth.py)
+- [tests/test_admin.py](d:/Documents2/KindlyCloud/tests/test_admin.py)
+- [tests/test_kindergarten.py](d:/Documents2/KindlyCloud/tests/test_kindergarten.py)
+- [tests/test_parent.py](d:/Documents2/KindlyCloud/tests/test_parent.py)
+- [tests/test_milestone2.py](d:/Documents2/KindlyCloud/tests/test_milestone2.py)
+
+## Example Requests
+
+Milestone 2 request examples are documented in:
+
+- [API_MILESTONE2_EXAMPLES.md](d:/Documents2/KindlyCloud/API_MILESTONE2_EXAMPLES.md)
+
+## Migrations
+
+Alembic migrations live in `alembic/versions/`.
+
+Recent schema change:
+
+- added `experience_year` to `pedagogues`
+
+## Notes
+
+This README reflects the current backend behavior in code. If older notes or external docs conflict with the implemented API, the code and test suite should be treated as the source of truth.
