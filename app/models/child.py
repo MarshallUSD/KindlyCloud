@@ -8,6 +8,13 @@ from sqlalchemy.orm import relationship
 from app.core.base import Base
 
 
+class ChildGender(str, Enum):
+    """Supported child genders."""
+
+    MALE = "male"
+    FEMALE = "female"
+
+
 class ChildStatus(str, Enum):
     """Child status enumeration."""
     ACTIVE = "active"
@@ -27,7 +34,8 @@ class Child(Base):
     first_name = Column(String(100), nullable=True)
     last_name = Column(String(100), nullable=True)
     birth_date = Column(Date, nullable=False)
-    gender = Column(String(10), nullable=True)  # "male", "female", "other"
+    gender = Column(SQLEnum(ChildGender), nullable=True)
+    notes = Column(Text, nullable=True)
     address = Column(Text, nullable=True)
     status = Column(SQLEnum(ChildStatus), default=ChildStatus.ACTIVE, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -41,6 +49,11 @@ class Child(Base):
     attendance_records = relationship("Attendance", back_populates="child", cascade="all, delete-orphan")
     feedback_for = relationship("Feedback", back_populates="for_child", foreign_keys="Feedback.child_id")
     payments = relationship("Payment", back_populates="child", foreign_keys="Payment.child_id")
+
+    @property
+    def id(self) -> str:
+        """Compatibility alias used by Milestone 3 responses."""
+        return self.child_id
 
 
 class ParentChildLink(Base):

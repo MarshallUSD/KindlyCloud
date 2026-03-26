@@ -1,27 +1,36 @@
-"""Child schemas."""
+"""Staff schemas."""
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.models.child import ChildGender
 from app.schemas._person import split_full_name
 
 
-class ChildCreate(BaseModel):
-    """Create child request."""
+class StaffCreate(BaseModel):
+    """Create staff request."""
 
     model_config = ConfigDict(populate_by_name=True)
 
     full_name: Optional[str] = Field(None, min_length=2, max_length=200)
-    birth_date: date
-    gender: Optional[ChildGender] = None
-    group_id: str
-    parent_phone: str = Field(..., min_length=7, max_length=20)
-    notes: Optional[str] = None
+    phone: str = Field(..., min_length=7, max_length=20)
+    role: str = Field(..., min_length=2, max_length=50)
+    salary: Optional[Decimal] = Field(None, ge=0)
+    hired_at: Optional[date] = None
+    group_id: Optional[str] = None
     first_name: Optional[str] = Field(None, min_length=1, max_length=100)
     last_name: Optional[str] = Field(None, min_length=1, max_length=100)
-    address: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def map_legacy_fields(cls, values):
+        if not isinstance(values, dict):
+            return values
+        values = dict(values)
+        values.setdefault("hired_at", values.get("hire_date"))
+        values.setdefault("role", values.get("position") or "teacher")
+        return values
 
     @model_validator(mode="after")
     def normalize_name(self):
@@ -37,20 +46,29 @@ class ChildCreate(BaseModel):
         return self
 
 
-class ChildUpdate(BaseModel):
-    """Update child request."""
+class StaffUpdate(BaseModel):
+    """Update staff request."""
 
     model_config = ConfigDict(populate_by_name=True)
 
     full_name: Optional[str] = Field(None, min_length=2, max_length=200)
-    birth_date: Optional[date] = None
-    gender: Optional[ChildGender] = None
+    phone: Optional[str] = Field(None, min_length=7, max_length=20)
+    role: Optional[str] = Field(None, min_length=2, max_length=50)
+    salary: Optional[Decimal] = Field(None, ge=0)
+    hired_at: Optional[date] = None
     group_id: Optional[str] = None
-    parent_phone: Optional[str] = Field(None, min_length=7, max_length=20)
-    notes: Optional[str] = None
     first_name: Optional[str] = Field(None, min_length=1, max_length=100)
     last_name: Optional[str] = Field(None, min_length=1, max_length=100)
-    address: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def map_legacy_fields(cls, values):
+        if not isinstance(values, dict):
+            return values
+        values = dict(values)
+        values.setdefault("hired_at", values.get("hire_date"))
+        values.setdefault("role", values.get("position"))
+        return values
 
     @model_validator(mode="after")
     def normalize_name(self):
@@ -65,46 +83,21 @@ class ChildUpdate(BaseModel):
         return self
 
 
-class ChildResponse(BaseModel):
-    """Child response schema."""
+class StaffResponse(BaseModel):
+    """Staff response schema."""
 
     model_config = ConfigDict(from_attributes=True)
 
     id: str
-    child_id: str
+    teacher_id: str
     kindergarten_id: str
-    group_id: str
+    group_id: Optional[str]
     full_name: str
     first_name: Optional[str]
     last_name: Optional[str]
-    birth_date: date
-    gender: Optional[ChildGender]
-    parent_phone: str
-    notes: Optional[str]
-    address: Optional[str]
+    phone: str
+    role: str
+    salary: Optional[Decimal]
+    hired_at: Optional[date]
     created_at: datetime
     updated_at: datetime
-
-
-class ParentChildLinkRequest(BaseModel):
-    """Link child to parent request."""
-
-    child_id: str
-    note: Optional[str] = None
-
-
-class ParentChildLinkResponse(BaseModel):
-    """Parent-child link response."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    link_id: str
-    parent_id: str
-    child_id: str
-    status: str
-    linked_at: datetime
-    note: Optional[str]
-
-
-ChildCreateRequest = ChildCreate
-ChildUpdateRequest = ChildUpdate

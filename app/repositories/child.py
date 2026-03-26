@@ -21,21 +21,29 @@ class ChildRepository(BaseRepository):
     def create_child(
         self,
         child_id: str,
-        first_name: str,
-        last_name: str,
+        first_name: Optional[str],
+        last_name: Optional[str],
         birth_date: date,
+        full_name: Optional[str] = None,
+        parent_phone: Optional[str] = None,
         gender: Optional[str] = None,
+        notes: Optional[str] = None,
         address: Optional[str] = None,
         kindergarten_id: Optional[str] = None,
+        group_id: Optional[str] = None,
     ) -> Child:
         """Create a new child."""
         child = Child(
             child_id=child_id,
             kindergarten_id=kindergarten_id,
+            group_id=group_id,
+            full_name=full_name or " ".join(part for part in [first_name, last_name] if part),
+            parent_phone=parent_phone or "",
             first_name=first_name,
             last_name=last_name,
             birth_date=birth_date,
             gender=gender,
+            notes=notes,
             address=address
         )
         self.db.add(child)

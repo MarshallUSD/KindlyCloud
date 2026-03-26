@@ -1,6 +1,6 @@
 # KindlyCloud
 
-KindlyCloud is a FastAPI backend for a multi-tenant kindergarten management platform. It supports JWT authentication, role-based access control, kindergarten verification, and tenant-safe operational APIs for groups, children, teachers, parents, enrollments, attendance, menus, and payments.
+KindlyCloud is a FastAPI backend for a multi-tenant kindergarten management platform. It supports JWT authentication, role-based access control, kindergarten verification, and tenant-safe operational APIs for groups, children, staff (pedagogues), parents, enrollments, attendance, menus, and payments.
 
 ## Current Scope
 
@@ -19,6 +19,16 @@ Milestone 2 is completed:
 - Group capacity validation
 - Same-tenant validation for child, teacher, and group relationships
 - Automatic tenant assignment from the authenticated kindergarten user
+
+Milestone 3 is now implemented:
+
+- Children CRUD uses the Milestone 3 contract with `full_name`, `birth_date`, `gender`, `group_id`, `parent_phone`, and optional `notes`
+- Staff CRUD is available via `/api/v1/staff/`
+- Staff records are tenant-scoped pedagogues with `full_name`, `phone`, `role`, optional `salary`, optional `hired_at`, and optional `group_id`
+- Children must always be created inside a group owned by the same kindergarten
+- Staff can be created first and then assigned to a group, or assigned during create/update
+- List endpoints support pagination and basic name search
+- Cross-tenant child and staff access now returns `403 Forbidden`
 
 ## Stack
 
@@ -79,6 +89,7 @@ All operational entities are scoped by `kindergarten_id`, and the backend enforc
 - kindergarten users can only read and mutate their own tenant data
 - linked entities such as `group_id` and `teacher_id` must belong to the same tenant
 - child creation and reassignment respect group capacity
+- child and staff queries distinguish `404 not found` from `403 foreign-tenant access`
 
 ## Core Models
 
@@ -94,7 +105,7 @@ Operational models:
 
 - `groups`
 - `children`
-- `pedagogues` for teachers
+- `pedagogues` for staff and teachers
 - `enrollments`
 - `attendance`
 - `menus`
@@ -102,12 +113,14 @@ Operational models:
 - `feedback`
 - `posts`
 
-Teacher records currently support:
+Staff records currently support:
 
 - `full_name`
 - `phone`
-- `experience_year`
-- `group_id`
+- `role`
+- optional `salary`
+- optional `hired_at`
+- optional `group_id`
 - `kindergarten_id`
 
 ## Main Routes
@@ -134,9 +147,9 @@ Teacher records currently support:
 - `POST /api/v1/kindergartens/`
 - `GET /api/v1/kindergartens/me`
 
-### Milestone 2 CRUD
+### Milestone 3 CRUD
 
-These endpoints require a verified kindergarten user.
+These endpoints require an authenticated kindergarten user.
 
 Groups:
 
@@ -154,7 +167,15 @@ Children:
 - `PUT /api/v1/children/{child_id}`
 - `DELETE /api/v1/children/{child_id}`
 
-Teachers:
+Staff:
+
+- `POST /api/v1/staff/`
+- `GET /api/v1/staff/`
+- `GET /api/v1/staff/{staff_id}`
+- `PUT /api/v1/staff/{staff_id}`
+- `DELETE /api/v1/staff/{staff_id}`
+
+Teachers compatibility route:
 
 - `POST /api/v1/teachers/`
 - `GET /api/v1/teachers/`
@@ -165,7 +186,9 @@ Teachers:
 Filters and pagination:
 
 - `skip` and `limit` are supported on list endpoints
-- `group_id` filtering is supported on `/children/` and `/teachers/`
+- `group_id` filtering is supported on `/children/`, `/staff/`, and `/teachers/`
+- `search` is supported on `/children/`, `/staff/`, and `/teachers/`
+- service-level validation errors return `400 Bad Request`
 
 ### Other Kindergarten Operations
 
@@ -212,9 +235,7 @@ From the project root:
 venv\Scripts\pytest.exe -q
 ```
 
-Current verified test status in this workspace:
-
-- `35 passed`
+Current verified status depends on the latest local test run.
 
 Relevant test files:
 
@@ -230,13 +251,59 @@ Milestone 2 request examples are documented in:
 
 - [API_MILESTONE2_EXAMPLES.md](d:/Documents2/KindlyCloud/API_MILESTONE2_EXAMPLES.md)
 
+Milestone 3 examples:
+
+Create a child:
+
+```http
+POST /api/v1/children/
+Authorization: Bearer <jwt>
+Content-Type: application/json
+
+{
+  "full_name": "Kamila Ergasheva",
+  "birth_date": "2021-02-10",
+  "gender": "female",
+  "group_id": "<group_uuid>",
+  "parent_phone": "+998900000099",
+  "notes": "Allergy: peanuts"
+}
+```
+
+Create a staff member:
+
+```http
+POST /api/v1/staff/
+Authorization: Bearer <jwt>
+Content-Type: application/json
+
+{
+  "full_name": "Nargiza Xasanova",
+  "phone": "+998901999888",
+  "role": "teacher",
+  "salary": "4500000",
+  "hired_at": "2025-09-01",
+  "group_id": "<group_uuid>"
+}
+```
+
+Search staff:
+
+```http
+GET /api/v1/staff/?search=Nargiza&skip=0&limit=20
+Authorization: Bearer <jwt>
+```
+
 ## Migrations
 
 Alembic migrations live in `alembic/versions/`.
 
-Recent schema change:
+Recent schema changes:
 
-- added `experience_year` to `pedagogues`
+- added Milestone 3 `children.notes`
+- added Milestone 3 `pedagogues.role`
+- added Milestone 3 `pedagogues.salary`
+- added Milestone 3 `pedagogues.hired_at`
 
 ## Notes
 

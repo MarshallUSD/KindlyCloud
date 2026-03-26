@@ -1,7 +1,8 @@
 """Pedagogue/Teacher model."""
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, Numeric, String
 from sqlalchemy.orm import relationship
 
 from app.core.base import Base
@@ -16,6 +17,9 @@ class Pedagogue(Base):
     group_id = Column(String, ForeignKey("groups.group_id"), nullable=True, index=True)
     full_name = Column(String(200), nullable=False, index=True)
     phone = Column(String(20), nullable=False)
+    role = Column(String(50), nullable=False, default="teacher")
+    salary = Column(Numeric(12, 2), nullable=True)
+    hired_at = Column(Date, nullable=True)
     experience_year = Column(Integer, nullable=True)
     first_name = Column(String(100), nullable=True)
     last_name = Column(String(100), nullable=True)
@@ -28,3 +32,17 @@ class Pedagogue(Base):
     kindergarten = relationship("Kindergarten", back_populates="pedagogues")
     group = relationship("Group", back_populates="teachers")
     group_links = relationship("PedagogueGroupLink", back_populates="pedagogue", cascade="all, delete-orphan")
+
+    @property
+    def id(self) -> str:
+        """Compatibility alias used by Milestone 3 responses."""
+        return self.teacher_id
+
+    @property
+    def hire_date(self):
+        """Backward-compatible alias."""
+        return self.hired_at
+
+    @hire_date.setter
+    def hire_date(self, value) -> None:
+        self.hired_at = value

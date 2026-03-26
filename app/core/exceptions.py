@@ -51,4 +51,4 @@ class ValidationException(ApplicationException):
     """Raised when validation fails."""
     
     def __init__(self, message: str = "Validation failed", **kwargs):
-        super().__init__(message, status_code=422, **kwargs)
+        super().__init__(message, status_code=400, **kwargs)
