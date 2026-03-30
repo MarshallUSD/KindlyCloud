@@ -1,33 +1,56 @@
 """Attendance model."""
-from datetime import datetime, date
+from datetime import datetime
 from enum import Enum
-from sqlalchemy import Column, String, DateTime, Date, ForeignKey, Text
-from sqlalchemy import Enum as SQLEnum
+
+from sqlalchemy import Column, Date, DateTime, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from app.core.base import Base
 
 
 class AttendanceStatus(str, Enum):
-    """Attendance status enumeration."""
+    """Supported daily attendance statuses."""
+
     PRESENT = "present"
-    ABSENT = "absent"
     LATE = "late"
-    EXCUSED = "excused"
+    ABSENT = "absent"
 
 
 class Attendance(Base):
-    """Daily attendance record."""
+    """Daily attendance record for one child."""
+
     __tablename__ = "attendance"
-    
+    __table_args__ = (
+        UniqueConstraint("child_id", "attend_date", name="uq_attendance_child_date"),
+    )
+
     attendance_id = Column(String, primary_key=True, index=True)
-    enrol_id = Column(String, ForeignKey("enrollments.enrol_id"), nullable=False, index=True)
-    child_id = Column(String, ForeignKey("children.child_id"), nullable=False, index=True)  # Denormalized for convenience
+    kindergarten_id = Column(String, ForeignKey("kindergartens.kindergarten_id"), nullable=False, index=True)
+    child_id = Column(String, ForeignKey("children.child_id"), nullable=False, index=True)
+    group_id = Column(String, ForeignKey("groups.group_id"), nullable=False, index=True)
     attend_date = Column(Date, nullable=False)
-    status = Column(SQLEnum(AttendanceStatus), nullable=False)
-    notes = Column(Text, nullable=True)
+    status = Column(String(20), nullable=False)
+    marked_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    
-    # Relationships
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Legacy fields kept nullable for compatibility with older installations.
+    enrol_id = Column(String, ForeignKey("enrollments.enrol_id"), nullable=True, index=True)
+    notes = Column(Text, nullable=True)
+
     enrollment = relationship("Enrollment", back_populates="attendance_records")
     child = relationship("Child", back_populates="attendance_records")
+
+    @property
+    def id(self) -> str:
+        """Compatibility alias used by newer API responses."""
+        return self.attendance_id
+
+    @property
+    def date(self):
+        """Compatibility alias for the attendance day."""
+        return self.attend_date
+
+    @date.setter
+    def date(self, value) -> None:
+        self.attend_date = value

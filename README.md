@@ -30,6 +30,17 @@ Milestone 3 is now implemented:
 - List endpoints support pagination and basic name search
 - Cross-tenant child and staff access now returns `403 Forbidden`
 
+Milestone 4 is now implemented:
+
+- Daily attendance is managed by group and date
+- Bulk attendance upsert is available via `/api/v1/attendance/bulk`
+- Daily attendance view returns all children in a group even before attendance is marked
+- Attendance history supports tenant-safe date range and optional group filtering
+- Attendance summary returns `total_children`, `present_count`, `late_count`, `absent_count`, and `unmarked_count`
+- Attendance status supports only `present`, `late`, and `absent`
+- Attendance enforces one record per child per date
+- Attendance validation blocks cross-tenant access and rejects children outside the selected group
+
 ## Stack
 
 - FastAPI
@@ -90,6 +101,9 @@ All operational entities are scoped by `kindergarten_id`, and the backend enforc
 - linked entities such as `group_id` and `teacher_id` must belong to the same tenant
 - child creation and reassignment respect group capacity
 - child and staff queries distinguish `404 not found` from `403 foreign-tenant access`
+- attendance validates that the group belongs to the current tenant
+- attendance validates that every child belongs to the current tenant and the selected group
+- attendance upserts by child and date to avoid duplicates
 
 ## Core Models
 
@@ -200,6 +214,20 @@ Filters and pagination:
 - `POST /api/v1/kindergartens/attendance`
 - `POST /api/v1/kindergartens/menus`
 
+### Attendance
+
+These endpoints require a verified kindergarten user.
+
+- `POST /api/v1/attendance/bulk`
+- `GET /api/v1/attendance/daily`
+- `GET /api/v1/attendance/history`
+- `GET /api/v1/attendance/summary`
+
+Notes:
+
+- `POST /api/v1/kindergartens/attendance` remains available as a legacy compatibility route
+- the main Milestone 4 attendance flow now lives under `/api/v1/attendance/`
+
 ### Parent
 
 - `GET /api/v1/parent/children`
@@ -244,6 +272,7 @@ Relevant test files:
 - [tests/test_kindergarten.py](d:/Documents2/KindlyCloud/tests/test_kindergarten.py)
 - [tests/test_parent.py](d:/Documents2/KindlyCloud/tests/test_parent.py)
 - [tests/test_milestone2.py](d:/Documents2/KindlyCloud/tests/test_milestone2.py)
+- [tests/test_attendance.py](d:/Documents2/KindlyCloud/tests/test_attendance.py)
 
 ## Example Requests
 
@@ -294,6 +323,47 @@ GET /api/v1/staff/?search=Nargiza&skip=0&limit=20
 Authorization: Bearer <jwt>
 ```
 
+Milestone 4 examples:
+
+Bulk save attendance:
+
+```http
+POST /api/v1/attendance/bulk
+Authorization: Bearer <jwt>
+Content-Type: application/json
+
+{
+  "group_id": "<group_uuid>",
+  "date": "2026-03-30",
+  "records": [
+    {"child_id": "<child_1_uuid>", "status": "present"},
+    {"child_id": "<child_2_uuid>", "status": "late"},
+    {"child_id": "<child_3_uuid>", "status": "absent"}
+  ]
+}
+```
+
+Daily attendance view:
+
+```http
+GET /api/v1/attendance/daily?group_id=<group_uuid>&date=2026-03-30
+Authorization: Bearer <jwt>
+```
+
+Attendance history:
+
+```http
+GET /api/v1/attendance/history?group_id=<group_uuid>&date_from=2026-03-01&date_to=2026-03-30
+Authorization: Bearer <jwt>
+```
+
+Attendance summary:
+
+```http
+GET /api/v1/attendance/summary?group_id=<group_uuid>&date=2026-03-30
+Authorization: Bearer <jwt>
+```
+
 ## Migrations
 
 Alembic migrations live in `alembic/versions/`.
@@ -304,6 +374,8 @@ Recent schema changes:
 - added Milestone 3 `pedagogues.role`
 - added Milestone 3 `pedagogues.salary`
 - added Milestone 3 `pedagogues.hired_at`
+- added Milestone 4 attendance upgrade migration `20260330_0004_milestone4_attendance.py`
+- attendance now includes tenant and group scoping, daily uniqueness per child, and summary-friendly indexes
 
 ## Notes
 

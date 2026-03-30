@@ -1,79 +1,50 @@
 """Attendance repository for database operations."""
-from typing import List, Optional
 from datetime import date
-from sqlalchemy.orm import Session
+from typing import Optional
+
 from sqlalchemy import and_
+from sqlalchemy.orm import Session
 
 from app.models.attendance import Attendance
 from app.repositories.base import BaseRepository
 
 
 class AttendanceRepository(BaseRepository[Attendance]):
-    """Repository for Attendance model operations."""
+    """Repository for attendance records."""
 
     def __init__(self, db_session: Session):
-        """Initialize attendance repository.
-        
-        Args:
-            db_session: SQLAlchemy database session
-        """
-        super().__init__(Attendance, db_session)
+        super().__init__(db_session, Attendance)
 
-    def get_by_enrollment_and_date(
-        self, enrol_id: str, attend_date: date
-    ) -> Optional[Attendance]:
-        """Get attendance record by enrollment and date.
-        
-        Args:
-            enrol_id: Enrollment ID
-            attend_date: Attendance date
-            
-        Returns:
-            Attendance record or None
-        """
-        return self.db_session.query(Attendance).filter(
-            and_(
-                Attendance.enrol_id == enrol_id,
-                Attendance.attend_date == attend_date
+    def get_by_child_and_date(self, child_id: str, attend_date: date) -> Optional[Attendance]:
+        """Get one attendance record for a child on a specific day."""
+        return (
+            self.db.query(Attendance)
+            .filter(
+                and_(
+                    Attendance.child_id == child_id,
+                    Attendance.attend_date == attend_date,
+                )
             )
-        ).first()
-
-    def get_by_enrollment(
-        self, enrol_id: str, skip: int = 0, limit: int = 100
-    ) -> tuple[List[Attendance], int]:
-        """Get attendance records by enrollment.
-        
-        Args:
-            enrol_id: Enrollment ID
-            skip: Number of records to skip
-            limit: Maximum records to return
-            
-        Returns:
-            Tuple of (attendance records, total count)
-        """
-        query = self.db_session.query(Attendance).filter(
-            Attendance.enrol_id == enrol_id
+            .first()
         )
-        total = query.count()
-        records = query.offset(skip).limit(limit).all()
-        return records, total
 
-    def get_by_child(
-        self, child_id: str, skip: int = 0, limit: int = 100
-    ) -> tuple[List[Attendance], int]:
-        """Get attendance records by child.
-        
-        Args:
-            child_id: Child ID
-            skip: Number of records to skip
-            limit: Maximum records to return
-            
-        Returns:
-            Tuple of (attendance records, total count)
-        """
-        query = self.db_session.query(Attendance).filter(
-            Attendance.child_id == child_id
+    def list_by_group_and_range(
+        self,
+        *,
+        kindergarten_id: str,
+        group_id: str,
+        date_from: date,
+        date_to: date,
+    ) -> list[Attendance]:
+        """List attendance records for one tenant group in a date range."""
+        return (
+            self.db.query(Attendance)
+            .filter(
+                Attendance.kindergarten_id == kindergarten_id,
+                Attendance.group_id == group_id,
+                Attendance.attend_date >= date_from,
+                Attendance.attend_date <= date_to,
+            )
+            .order_by(Attendance.attend_date.desc(), Attendance.child_id.asc())
+            .all()
         )
-        total = query.count()
-        records = query.offset(skip).limit(limit).all()
-        return records, total

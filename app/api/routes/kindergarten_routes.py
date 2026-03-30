@@ -1,5 +1,4 @@
 from typing import Optional
-import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -16,6 +15,7 @@ from app.schemas.attendance import AttendanceCreateRequest, AttendanceResponse
 from app.schemas.menu import MenuCreateRequest, MenuResponse
 from app.schemas.parent import ParentCreateRequest, ParentResponse
 from app.services.auth import AuthService
+from app.services.attendance import AttendanceService
 from app.services.child import ChildService
 from app.services.enrollment import EnrollmentService
 from app.services.group import GroupService
@@ -155,28 +155,13 @@ def create_attendance(
 ):
     """Mark attendance."""
     try:
-        from app.models.attendance import Attendance
-        attendance_id = str(uuid.uuid4())
-        
-        # Get enrollment to extract child_id
-        from app.repositories.enrollment import EnrollmentRepository
-        enrol_repo = EnrollmentRepository(db)
-        enrollment = enrol_repo.get_by_id(request.enrol_id)
-        if not enrollment:
-            raise ValueError("Enrollment not found")
-        
-        attendance = Attendance(
-            attendance_id=attendance_id,
+        return AttendanceService(db).create_from_legacy_enrollment(
+            current_user,
             enrol_id=request.enrol_id,
-            child_id=enrollment.child_id,
             attend_date=request.attend_date,
             status=request.status,
-            notes=request.notes
+            notes=request.notes,
         )
-        db.add(attendance)
-        db.commit()
-        db.refresh(attendance)
-        return attendance
     except ApplicationException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
 
