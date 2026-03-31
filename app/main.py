@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from config import settings
-from app.api.routes import admin_routes, attendance, auth, children, groups, kindergarten_routes, parent_routes, staff, teachers
+from app.api.routes import admin_routes, attendance, auth, children, groups, kindergarten_routes, parent_routes, payments, staff, teachers
 from app.core.exceptions import ApplicationException
 
 # Initialize FastAPI app
@@ -56,6 +56,9 @@ app.include_router(staff.router, prefix=f"{settings.API_V1_PREFIX}/staff", tags=
 app.include_router(teachers.router, prefix=f"{settings.API_V1_PREFIX}/teachers", tags=["teachers"])
 app.include_router(kindergarten_routes.router, prefix=f"{settings.API_V1_PREFIX}/kindergartens", tags=["kindergarten"])
 app.include_router(parent_routes.router, prefix=f"{settings.API_V1_PREFIX}/parent", tags=["parent"])
+app.include_router(payments.router, prefix=f"{settings.API_V1_PREFIX}/payments", tags=["payments"])
+app.include_router(payments.parent_router, prefix=f"{settings.API_V1_PREFIX}/parent", tags=["parent-payments"])
+app.include_router(payments.report_router, prefix=f"{settings.API_V1_PREFIX}/reports", tags=["reports"])
 
 
 @app.get("/")

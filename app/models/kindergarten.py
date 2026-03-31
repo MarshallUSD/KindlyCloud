@@ -31,6 +31,7 @@ class Kindergarten(Base):
     pedagogues = relationship("Pedagogue", back_populates="kindergarten", cascade="all, delete-orphan")
     groups = relationship("Group", back_populates="kindergarten", cascade="all, delete-orphan")
     children = relationship("Child", back_populates="kindergarten", cascade="all, delete-orphan")
+    payments = relationship("Payment", back_populates="kindergarten", cascade="all, delete-orphan")
     menus = relationship("Menu", back_populates="kindergarten", cascade="all, delete-orphan")
     posts = relationship("Post", back_populates="target_kindergarten", foreign_keys="Post.target_kindergarten_id")
     feedback_from = relationship("Feedback", back_populates="from_kindergarten", foreign_keys="Feedback.from_kindergarten_id")

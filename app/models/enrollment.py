@@ -35,4 +35,3 @@ class Enrollment(Base):
     child = relationship("Child", back_populates="enrollments")
     group = relationship("Group", back_populates="enrollments")
     attendance_records = relationship("Attendance", back_populates="enrollment", cascade="all, delete-orphan")
-    payments = relationship("Payment", back_populates="enrollment", cascade="all, delete-orphan")

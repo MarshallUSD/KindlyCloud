@@ -1,5 +1,4 @@
 """Tests for parent endpoints."""
-import pytest
 from fastapi import status
 
 
@@ -17,45 +16,24 @@ def test_get_my_children(client, test_parent_user_token, test_parent_child_link)
     """Test getting my children."""
     response = client.get(
         "/api/v1/parent/children",
-        headers={"Authorization": f"Bearer {test_parent_user_token}"}
+        headers={"Authorization": f"Bearer {test_parent_user_token}"},
     )
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     assert len(data) >= 1
 
 
-def test_create_payment(client, test_parent_user_token, test_enrollment, test_parent, test_parent_child_link):
-    """Test creating a payment."""
+def test_parent_payment_creation_endpoint_removed(client, test_parent_user_token):
+    """Parents are read-only for payment records in milestone 5."""
     response = client.post(
         "/api/v1/parent/payments",
-        json={
-            "enrol_id": test_enrollment.enrol_id,
-            "amount": "100000.00",
-            "payment_date": "2026-03-10",
-            "provider": "cash",
-            "transaction_id": "TXN123456"
-        },
-        headers={"Authorization": f"Bearer {test_parent_user_token}"}
+        json={"child_id": "x", "amount": "100000.00", "due_date": "2026-04-10", "billing_period": "2026-04"},
+        headers={"Authorization": f"Bearer {test_parent_user_token}"},
     )
-    assert response.status_code == status.HTTP_201_CREATED
-    data = response.json()
-    assert data["amount"] == "100000.00"
-
-
-def test_list_payments(client, test_parent_user_token, test_parent):
-    """Test listing payments."""
-    response = client.get(
-        "/api/v1/parent/payments",
-        headers={"Authorization": f"Bearer {test_parent_user_token}"}
-    )
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()
-    assert "items" in data
-    assert "total" in data
+    assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
 
 
 def test_unauthorized_parent_access(client):
     """Test accessing parent routes without auth."""
     response = client.get("/api/v1/parent/children")
-    # HTTPBearer returns 403 when credentials are missing
     assert response.status_code == status.HTTP_403_FORBIDDEN

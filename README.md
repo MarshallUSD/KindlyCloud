@@ -2,6 +2,15 @@
 
 KindlyCloud is a FastAPI backend for a multi-tenant kindergarten management platform. It supports JWT authentication, role-based access control, kindergarten verification, and tenant-safe operational APIs for groups, children, staff (pedagogues), parents, enrollments, attendance, menus, and payments.
 
+Milestone 5 is now implemented:
+
+- kindergarten users create and manage tenant-scoped monthly payment records
+- payment status is limited to `pending`, `paid`, and `overdue`
+- overdue status is enforced automatically from `due_date`
+- parents can only read payments for linked children
+- payment events write notification-ready records to the existing `notifications` table
+- kindergarten users can export payment PDF reports for daily, weekly, monthly, and custom ranges
+
 ## Current Scope
 
 Milestone 1 is completed:
@@ -104,6 +113,7 @@ All operational entities are scoped by `kindergarten_id`, and the backend enforc
 - attendance validates that the group belongs to the current tenant
 - attendance validates that every child belongs to the current tenant and the selected group
 - attendance upserts by child and date to avoid duplicates
+- payment records enforce tenant-safe child ownership and one record per child plus billing period inside each tenant
 
 ## Core Models
 
@@ -232,8 +242,23 @@ Notes:
 
 - `GET /api/v1/parent/children`
 - `GET /api/v1/parent/menus/today`
-- `POST /api/v1/parent/payments`
 - `GET /api/v1/parent/payments`
+- `GET /api/v1/parent/payments/{payment_id}`
+
+### Payments
+
+- `POST /api/v1/payments/`
+- `GET /api/v1/payments/`
+- `GET /api/v1/payments/{payment_id}`
+- `PATCH /api/v1/payments/{payment_id}`
+- `PATCH /api/v1/payments/{payment_id}/mark-paid`
+
+### Reports
+
+- `GET /api/v1/reports/payments/export?period=daily`
+- `GET /api/v1/reports/payments/export?period=weekly`
+- `GET /api/v1/reports/payments/export?period=monthly`
+- `GET /api/v1/reports/payments/export?period=custom&from_date=2026-04-01&to_date=2026-04-30`
 
 ## Running Locally
 
@@ -364,6 +389,44 @@ GET /api/v1/attendance/summary?group_id=<group_uuid>&date=2026-03-30
 Authorization: Bearer <jwt>
 ```
 
+Milestone 5 examples:
+
+Create a payment record:
+
+```http
+POST /api/v1/payments/
+Authorization: Bearer <jwt>
+Content-Type: application/json
+
+{
+  "child_id": "<child_uuid>",
+  "amount": "500000.00",
+  "due_date": "2026-04-10",
+  "billing_period": "2026-04",
+  "status": "pending",
+  "notes": "April tuition"
+}
+```
+
+Mark a payment as paid:
+
+```http
+PATCH /api/v1/payments/<payment_uuid>/mark-paid
+Authorization: Bearer <jwt>
+Content-Type: application/json
+
+{
+  "payment_method": "cash"
+}
+```
+
+Export the monthly payment report:
+
+```http
+GET /api/v1/reports/payments/export?period=monthly
+Authorization: Bearer <jwt>
+```
+
 ## Migrations
 
 Alembic migrations live in `alembic/versions/`.
@@ -376,6 +439,8 @@ Recent schema changes:
 - added Milestone 3 `pedagogues.hired_at`
 - added Milestone 4 attendance upgrade migration `20260330_0004_milestone4_attendance.py`
 - attendance now includes tenant and group scoping, daily uniqueness per child, and summary-friendly indexes
+- added Milestone 5 payment tracking/reporting migration `20260331_0005_milestone5_payments.py`
+- payments now use tenant-scoped monthly billing records, notification hooks, and PDF export support
 
 ## Notes
 
