@@ -1,8 +1,18 @@
 # KindlyCloud
 
-KindlyCloud is a FastAPI backend for a multi-tenant kindergarten management platform. It supports JWT authentication, role-based access control, kindergarten verification, and tenant-safe operational APIs for groups, children, staff (pedagogues), parents, enrollments, attendance, menus, and payments.
+KindlyCloud is a FastAPI backend for a multi-tenant kindergarten management platform. It supports JWT authentication, role-based access control, kindergarten verification, and tenant-safe operational APIs for groups, children, staff (pedagogues), parents, enrollments, attendance, menus, notifications, and payments.
 
-Milestone 5 is now implemented:
+Milestone 6 Part 1 is now implemented:
+
+- parents now have a tenant-safe read layer for dashboard, attendance, menu, and notifications
+- `GET /api/v1/parent/dashboard` aggregates linked child, group, pedagogue, today attendance, published menu, latest payment, and unread notification count
+- `GET /api/v1/parent/attendance` supports exact-date and date-range history for linked children only
+- `GET /api/v1/parent/menu` returns the published menu for a linked child's group and defaults to today
+- `GET /api/v1/parent/notifications` and `PATCH /api/v1/parent/notifications/{notification_id}/read` provide parent-scoped notification reads
+- menus now support `draft` and `published` status with `published_at`, while the legacy `GET /api/v1/parent/menus/today` route remains available
+- parent profiles are ready for future Telegram linkage through optional `telegram_id`
+
+Milestone 5 remains implemented:
 
 - kindergarten users create and manage tenant-scoped monthly payment records
 - payment status is limited to `pending`, `paid`, and `overdue`
@@ -49,6 +59,15 @@ Milestone 4 is now implemented:
 - Attendance status supports only `present`, `late`, and `absent`
 - Attendance enforces one record per child per date
 - Attendance validation blocks cross-tenant access and rejects children outside the selected group
+
+Milestone 6 Part 1 parent read layer:
+
+- parent dashboard returns linked children only and never leaks foreign children or foreign tenant data
+- dashboard attendance uses explicit `unmarked` when today's attendance is missing
+- parent menu reads only published menus; draft menus stay hidden from parents
+- parent attendance defaults to the last 30 days when no filters are supplied
+- parent notifications are user-scoped and expose `is_read` plus `read_at`
+- menu creation now rejects duplicate menus for the same group and date at the service layer
 
 ## Stack
 
@@ -125,6 +144,14 @@ Key auth and tenant models:
 - `parents`
 - `parent_users`
 
+Parent identity model:
+
+- `parents` stores the real-world guardian profile
+- `parent_users` stores the authenticated access link for that guardian
+- one `parent_user` links to one `parent`
+- one `parent` can be linked to multiple children through `parent_child_links`
+- optional `telegram_id` is stored on `parents` for future bot integration
+
 Operational models:
 
 - `groups`
@@ -133,6 +160,7 @@ Operational models:
 - `enrollments`
 - `attendance`
 - `menus`
+- `notifications`
 - `payments`
 - `feedback`
 - `posts`
@@ -241,9 +269,30 @@ Notes:
 ### Parent
 
 - `GET /api/v1/parent/children`
+- `GET /api/v1/parent/dashboard`
+- `GET /api/v1/parent/attendance`
+- `GET /api/v1/parent/menu`
 - `GET /api/v1/parent/menus/today`
+- `GET /api/v1/parent/notifications`
+- `PATCH /api/v1/parent/notifications/{notification_id}/read`
 - `GET /api/v1/parent/payments`
 - `GET /api/v1/parent/payments/{payment_id}`
+
+Parent read notes:
+
+- `GET /api/v1/parent/menu` requires `child_id` when the parent has multiple linked children
+- `GET /api/v1/parent/menu` defaults `date` to today when omitted
+- `GET /api/v1/parent/attendance` accepts `child_id`, `date`, `date_from`, and `date_to`
+- `date` cannot be combined with `date_from` or `date_to`
+- if no attendance filters are provided, the API returns the last 30 days for linked children
+- `/api/v1/parent/menus/today` is kept for backward compatibility and returns today's published menu only
+
+Menu behavior:
+
+- menus are date-based records assigned to groups
+- parent reads only published menus
+- kindergarten menu creation accepts `status` with `published` as the default for backward compatibility
+- duplicate menus for the same group and date are rejected
 
 ### Payments
 
@@ -427,6 +476,36 @@ GET /api/v1/reports/payments/export?period=monthly
 Authorization: Bearer <jwt>
 ```
 
+Milestone 6 Part 1 examples:
+
+Parent dashboard:
+
+```http
+GET /api/v1/parent/dashboard
+Authorization: Bearer <parent_jwt>
+```
+
+Parent attendance history:
+
+```http
+GET /api/v1/parent/attendance?child_id=<child_uuid>&date_from=2026-03-01&date_to=2026-03-31
+Authorization: Bearer <parent_jwt>
+```
+
+Parent menu:
+
+```http
+GET /api/v1/parent/menu?child_id=<child_uuid>&date=2026-04-01
+Authorization: Bearer <parent_jwt>
+```
+
+Parent notifications:
+
+```http
+GET /api/v1/parent/notifications?skip=0&limit=20
+Authorization: Bearer <parent_jwt>
+```
+
 ## Migrations
 
 Alembic migrations live in `alembic/versions/`.
@@ -441,6 +520,9 @@ Recent schema changes:
 - attendance now includes tenant and group scoping, daily uniqueness per child, and summary-friendly indexes
 - added Milestone 5 payment tracking/reporting migration `20260331_0005_milestone5_payments.py`
 - payments now use tenant-scoped monthly billing records, notification hooks, and PDF export support
+- added Milestone 6 parent read layer migration `20260401_0006_milestone6_parent_read_layer.py`
+- migration `20260401_0006_milestone6_parent_read_layer.py` adds optional `parents.telegram_id`, menu publish fields, and a uniqueness guard for duplicate group-menu assignments
+- after applying the migration, existing menus are backfilled as `published` with `published_at` derived from `created_at`
 
 ## Notes
 

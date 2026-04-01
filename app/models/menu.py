@@ -1,7 +1,7 @@
 """Menu models."""
-from datetime import datetime, date
+from datetime import datetime
 from enum import Enum
-from sqlalchemy import Column, String, DateTime, Date, ForeignKey, Text, Integer
+from sqlalchemy import Column, String, DateTime, Date, ForeignKey, Text, Integer, UniqueConstraint
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
@@ -16,6 +16,13 @@ class Meal(str, Enum):
     DINNER = "dinner"
 
 
+class MenuStatus(str, Enum):
+    """Publishing state for a menu."""
+
+    DRAFT = "draft"
+    PUBLISHED = "published"
+
+
 class Menu(Base):
     """Daily menu for a kindergarten."""
     __tablename__ = "menus"
@@ -24,7 +31,15 @@ class Menu(Base):
     kindergarten_id = Column(String, ForeignKey("kindergartens.kindergarten_id"), nullable=False, index=True)
     menu_date = Column(Date, nullable=False, index=True)
     created_by_user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    status = Column(
+        SQLEnum(MenuStatus, name="menu_status", native_enum=False),
+        nullable=False,
+        default=MenuStatus.PUBLISHED,
+    )
+    published_at = Column(DateTime, nullable=True)
+    notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
     # Relationships
     kindergarten = relationship("Kindergarten", back_populates="menus")
@@ -52,6 +67,9 @@ class MenuItem(Base):
 class GroupMenu(Base):
     """Assignment of menu to a group."""
     __tablename__ = "group_menus"
+    __table_args__ = (
+        UniqueConstraint("group_id", "menu_id", name="uq_group_menus_group_menu"),
+    )
     
     group_menu_id = Column(String, primary_key=True, index=True)
     group_id = Column(String, ForeignKey("groups.group_id"), nullable=False, index=True)

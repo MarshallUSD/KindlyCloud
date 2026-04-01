@@ -175,9 +175,14 @@ def create_menu(
     """Create menu."""
     try:
         service = MenuService(db)
-        menu = service.create_menu(current_user, request.menu_date, 
-                                   [item.dict() for item in request.items],
-                                   request.group_ids)
+        menu = service.create_menu(
+            current_user,
+            request.menu_date,
+            [item.model_dump() for item in request.items],
+            request.group_ids,
+            status=request.status,
+            notes=request.notes,
+        )
         return menu
     except ApplicationException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)

@@ -1,13 +1,8 @@
 """Notification model."""
 from datetime import datetime
-from typing import Optional
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text, JSON
-from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import Column, String, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from app.core.base import Base
-from sqlalchemy.dialects.postgresql import UUID
-
-user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
 
 class Notification(Base):
     """User notification."""
@@ -22,3 +17,8 @@ class Notification(Base):
     
     # Relationships
     user = relationship("User", back_populates="notifications")
+
+    @property
+    def is_read(self) -> bool:
+        """Expose a boolean read flag for API responses."""
+        return self.read_at is not None

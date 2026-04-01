@@ -2,7 +2,9 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import date, datetime
-from app.models.menu import Meal
+from pydantic import ConfigDict
+
+from app.models.menu import Meal, MenuStatus
 
 
 class MenuItemCreateRequest(BaseModel):
@@ -15,15 +17,14 @@ class MenuItemCreateRequest(BaseModel):
 
 class MenuItemResponse(BaseModel):
     """Menu item response schema."""
+    model_config = ConfigDict(from_attributes=True)
+
     menu_item_id: str
     meal: Meal
     title: str
     description: Optional[str]
     calories: Optional[int]
     created_at: datetime
-    
-    class Config:
-        from_attributes = True
 
 
 class MenuCreateRequest(BaseModel):
@@ -31,16 +32,21 @@ class MenuCreateRequest(BaseModel):
     menu_date: date
     items: List[MenuItemCreateRequest]
     group_ids: Optional[List[str]] = None  # IDs of groups to assign menu
+    status: MenuStatus = MenuStatus.PUBLISHED
+    notes: Optional[str] = None
 
 
 class MenuResponse(BaseModel):
     """Menu response schema."""
+    model_config = ConfigDict(from_attributes=True)
+
     menu_id: str
     kindergarten_id: str
     menu_date: date
     created_by_user_id: str
+    status: MenuStatus
+    published_at: Optional[datetime]
+    notes: Optional[str]
     items: List[MenuItemResponse]
     created_at: datetime
-    
-    class Config:
-        from_attributes = True
+    updated_at: datetime

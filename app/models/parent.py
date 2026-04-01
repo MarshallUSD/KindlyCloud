@@ -16,6 +16,7 @@ class Parent(Base):
     last_name = Column(String(100), nullable=False)
     phone = Column(String(20), nullable=False)
     email = Column(String(255), nullable=True, unique=True, index=True)
+    telegram_id = Column(String(64), nullable=True, unique=True, index=True)
     address = Column(Text, nullable=True)
     birth_date = Column(Date, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
