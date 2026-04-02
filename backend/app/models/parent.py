@@ -26,6 +26,13 @@ class Parent(Base):
     child_links = relationship("ParentChildLink", back_populates="parent", cascade="all, delete-orphan")
     payments = relationship("Payment", back_populates="parent", foreign_keys="Payment.parent_id")
     parent_submissions = relationship("ParentSubmission", back_populates="parent", cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="parent", cascade="all, delete-orphan")
+    notification_settings = relationship(
+        "ParentNotificationSettings",
+        back_populates="parent",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
     feedback_from = relationship("Feedback", back_populates="from_parent", foreign_keys="Feedback.from_parent_id")
 
 

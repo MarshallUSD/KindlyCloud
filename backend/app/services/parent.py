@@ -13,6 +13,7 @@ from app.models.child import Child, ParentChildLink
 from app.models.group import Group
 from app.models.menu import Menu
 from app.models.parent import Parent
+from app.models.notification import NotificationEventType, NotificationType
 from app.models.payment import Payment
 from app.models.pedagogue import Pedagogue
 from app.models.user import User
@@ -139,7 +140,7 @@ class ParentService:
 
         return ParentDashboardResponse(
             children=items,
-            unread_notifications_count=self.notification_service.count_unread_for_user(current_user),
+            unread_notifications_count=self.notification_service.count_unread_for_parent(current_user),
         )
 
     def get_attendance(
@@ -214,9 +215,25 @@ class ParentService:
             raise NotFoundException("Published menu not found")
         return menu
 
-    def list_notifications(self, current_user: User, *, skip: int = 0, limit: int = 20):
+    def list_notifications(
+        self,
+        current_user: User,
+        *,
+        skip: int = 0,
+        limit: int = 20,
+        type_: Optional[NotificationType] = None,
+        event_type: Optional[NotificationEventType] = None,
+        is_read: Optional[bool] = None,
+    ):
         """List notifications visible to the current parent user."""
-        return self.notification_service.list_for_user(current_user, skip=skip, limit=limit)
+        return self.notification_service.list_parent_notifications(
+            current_user,
+            skip=skip,
+            limit=limit,
+            type_=type_,
+            event_type=event_type,
+            is_read=is_read,
+        )
 
     def mark_notification_read(self, current_user: User, notification_id: str):
         """Mark a notification as read for the current parent user."""

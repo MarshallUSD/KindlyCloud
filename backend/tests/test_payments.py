@@ -6,7 +6,7 @@ from datetime import date, timedelta
 from fastapi import status
 
 from app.models.child import ParentChildLink
-from app.models.notification import Notification
+from app.models.notification import Notification, NotificationEventType
 
 
 def _link_parent_to_child(db_session, *, parent_id: str, child_id: str, note: str = "Linked for billing") -> None:
@@ -56,7 +56,7 @@ def test_kindergarten_creates_payment_record_successfully(
     assert data["kindergarten_id"] == verified_tenant["kindergarten"].kindergarten_id
     notifications = db_session.query(Notification).all()
     assert len(notifications) == 1
-    assert notifications[0].notif_type == "payment_created"
+    assert notifications[0].event_type == NotificationEventType.PAYMENT_CREATED
 
 
 def test_duplicate_billing_period_for_same_child_is_rejected(
@@ -146,7 +146,11 @@ def test_overdue_logic_works_correctly(
 
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["status"] == "overdue"
-    overdue_notifications = db_session.query(Notification).filter(Notification.notif_type == "payment_overdue").all()
+    overdue_notifications = (
+        db_session.query(Notification)
+        .filter(Notification.event_type == NotificationEventType.PAYMENT_OVERDUE)
+        .all()
+    )
     assert len(overdue_notifications) == 1
 
 

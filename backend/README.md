@@ -663,3 +663,58 @@ This README reflects the current backend behavior in code. If older notes or ext
 
 
 
+
+## Structured Notifications And Announcements
+
+The backend now includes a production-ready one-way outbound communication module for parents.
+
+Implemented behavior:
+
+- automatic system notifications for `attendance_late`, `attendance_absent`, `payment_created`, `payment_overdue`, and `payment_paid`
+- manual kindergarten announcements targeting `all`, `group`, or `child`
+- parent notification preferences via `GET /api/v1/parent/notification-settings` and `PATCH /api/v1/parent/notification-settings`
+- kindergarten announcement management via `POST /api/v1/announcements/`, `GET /api/v1/announcements/`, `GET /api/v1/announcements/{announcement_id}`, and `DELETE /api/v1/announcements/{announcement_id}`
+- tenant-scoped notification storage using `notifications`, `announcements`, `notification_delivery_stats`, and `parent_notification_settings`
+- best-effort Telegram delivery using `parents.telegram_id` that never breaks the triggering API on failure
+- service-layer event hooks in attendance and payments so routes do not duplicate notification logic
+- no chat, no replies, no threads, no websocket, and no realtime infrastructure
+
+Migration:
+
+- apply Alembic migration `20260402_0008_notifications_announcements.py`
+- the migration upgrades the legacy `notifications` table into the new parent-scoped structure on a best-effort basis when parent linkage can be resolved
+
+Test status:
+
+- full backend suite passed locally with `116 passed`
+
+## Notifications And Announcements Update (2026-04-02)
+
+This backend now supports a structured one-way outbound parent communication module.
+
+Key rules:
+- notifications and announcements are separate concepts
+- kindergarten announcements are expanded through fan-out into parent-scoped `notifications`
+- parent history is read from `notifications`, not from raw `announcements`
+- Telegram delivery is best-effort only and never breaks the triggering API
+- delivery stats are based on actual notification creation, actual Telegram success, and actual read state updates
+- notification preferences affect delivery behavior, not tenant safety or in-app record storage
+- this module does not add chat, replies, threads, websockets, or realtime messaging
+
+Routes:
+- `GET /api/v1/parent/notifications`
+- `PATCH /api/v1/parent/notifications/{notification_id}/read`
+- `GET /api/v1/parent/notification-settings`
+- `PATCH /api/v1/parent/notification-settings`
+- `POST /api/v1/announcements/`
+- `GET /api/v1/announcements/`
+- `GET /api/v1/announcements/{announcement_id}`
+- `DELETE /api/v1/announcements/{announcement_id}`
+
+Migration:
+- apply `alembic/versions/20260402_0008_notifications_announcements.py`
+- the revision creates `announcements`, `parent_notification_settings`, and `notification_delivery_stats`
+- the revision reshapes `notifications` into parent-scoped records with source announcement linkage, Telegram status fields, read tracking, and safe best-effort legacy migration only when parent linkage can be resolved
+
+Verified locally:
+- `58 passed` across `tests/test_notifications.py`, `tests/test_payments.py`, `tests/test_attendance.py`, and `tests/test_parent.py`

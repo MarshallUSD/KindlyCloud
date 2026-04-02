@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import AuthorizationException, ConflictException, NotFoundException, ValidationException
 from app.models.child import ParentChildLink
+from app.models.notification import NotificationEventType
 from app.models.payment import Payment, PaymentMethod, PaymentStatus
 from app.models.user import User
 from app.repositories.child import ChildRepository
@@ -71,16 +72,12 @@ class PaymentService:
         )
         self._sync_status(payment)
         self._emit_child_notifications(
+            kindergarten_id=kindergarten.kindergarten_id,
             child_id=child.child_id,
-            notif_type="payment_created",
-            payload={
-                "payment_id": payment.payment_id,
-                "child_id": child.child_id,
-                "billing_period": payment.billing_period,
-                "amount": str(payment.amount),
-                "due_date": payment.due_date.isoformat(),
-                "status": payment.status.value,
-            },
+            event_type=NotificationEventType.PAYMENT_CREATED,
+            title="Yangi to'lov yaratildi",
+            message="Siz uchun yangi to'lov yaratildi.",
+            business_event_id=payment.payment_id,
         )
         return payment
 
@@ -166,15 +163,12 @@ class PaymentService:
             payment_method=payment_method,
         )
         self._emit_child_notifications(
+            kindergarten_id=payment.kindergarten_id,
             child_id=payment.child_id,
-            notif_type="payment_paid",
-            payload={
-                "payment_id": payment.payment_id,
-                "child_id": payment.child_id,
-                "billing_period": payment.billing_period,
-                "paid_at": payment.paid_at.isoformat() if payment.paid_at else None,
-                "payment_method": payment.payment_method.value if payment.payment_method else None,
-            },
+            event_type=NotificationEventType.PAYMENT_PAID,
+            title="To'lov tasdiqlandi",
+            message="To'lovingiz muvaffaqiyatli tasdiqlandi.",
+            business_event_id=payment.payment_id,
         )
         return payment
 
@@ -272,20 +266,30 @@ class PaymentService:
         payment = self.payment_repo.update_payment(payment, status=computed_status)
         if previous_status != PaymentStatus.OVERDUE and computed_status == PaymentStatus.OVERDUE:
             self._emit_child_notifications(
+                kindergarten_id=payment.kindergarten_id,
                 child_id=payment.child_id,
-                notif_type="payment_overdue",
-                payload={
-                    "payment_id": payment.payment_id,
-                    "child_id": payment.child_id,
-                    "billing_period": payment.billing_period,
-                    "due_date": payment.due_date.isoformat(),
-                    "status": payment.status.value,
-                },
+                event_type=NotificationEventType.PAYMENT_OVERDUE,
+                title="Muddati o'tgan to'lov",
+                message="Sizda muddati o'tgan to'lov mavjud.",
+                business_event_id=payment.payment_id,
             )
         return payment
 
-    def _emit_child_notifications(self, *, child_id: str, notif_type: str, payload: dict) -> None:
-        user_ids = self.payment_repo.get_parent_user_ids_for_child(child_id)
-        if not user_ids:
-            return
-        self.notification_service.create_bulk(user_ids=user_ids, notif_type=notif_type, payload=payload)
+    def _emit_child_notifications(
+        self,
+        *,
+        kindergarten_id: str,
+        child_id: str,
+        event_type: NotificationEventType,
+        title: str,
+        message: str,
+        business_event_id: str | None = None,
+    ) -> None:
+        self.notification_service.create_system_notifications_for_child(
+            kindergarten_id=kindergarten_id,
+            child_id=child_id,
+            event_type=event_type,
+            title=title,
+            message=message,
+            business_event_id=business_event_id,
+        )

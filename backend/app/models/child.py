@@ -50,6 +50,7 @@ class Child(Base):
     feedback_for = relationship("Feedback", back_populates="for_child", foreign_keys="Feedback.child_id")
     payments = relationship("Payment", back_populates="child", foreign_keys="Payment.child_id")
     parent_submissions = relationship("ParentSubmission", back_populates="child", foreign_keys="ParentSubmission.child_id")
+    notifications = relationship("Notification", back_populates="child")
 
     @property
     def id(self) -> str:

@@ -8,7 +8,7 @@ from app.models.feedback import Feedback
 from app.models.group import Group
 from app.models.kindergarten import Kindergarten, KindergartenUser
 from app.models.menu import GroupMenu, Menu, MenuItem
-from app.models.notification import Notification
+from app.models.notification import Announcement, Notification, NotificationDeliveryStats, ParentNotificationSettings
 from app.models.parent import Parent, ParentUser
 from app.models.parent_submission import ParentSubmission
 from app.models.payment import Payment

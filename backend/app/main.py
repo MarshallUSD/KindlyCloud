@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from config import settings
 from app.api.routes import (
     admin_routes,
+    announcements,
     attendance,
     auth,
     children,
@@ -64,6 +65,7 @@ app.include_router(admin_routes.router, prefix=f"{settings.API_V1_PREFIX}/admin"
 app.include_router(groups.router, prefix=f"{settings.API_V1_PREFIX}/groups", tags=["groups"])
 app.include_router(children.router, prefix=f"{settings.API_V1_PREFIX}/children", tags=["children"])
 app.include_router(attendance.router, prefix=f"{settings.API_V1_PREFIX}/attendance", tags=["attendance"])
+app.include_router(announcements.router, prefix=f"{settings.API_V1_PREFIX}/announcements", tags=["announcements"])
 app.include_router(staff.router, prefix=f"{settings.API_V1_PREFIX}/staff", tags=["staff"])
 app.include_router(teachers.router, prefix=f"{settings.API_V1_PREFIX}/teachers", tags=["teachers"])
 app.include_router(kindergarten_routes.router, prefix=f"{settings.API_V1_PREFIX}/kindergartens", tags=["kindergarten"])

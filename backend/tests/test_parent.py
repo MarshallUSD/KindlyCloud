@@ -9,7 +9,7 @@ from fastapi import status
 
 from app.core.time import utcnow
 from app.models.child import ParentChildLink
-from app.models.notification import Notification
+from app.models.notification import Notification, NotificationEventType, NotificationType
 from app.models.parent import ParentUser
 from app.models.payment import Payment
 from app.models.pedagogue import Pedagogue
@@ -57,12 +57,28 @@ def _create_payment(client, tenant, *, child_id: str, amount="250000.00", due_da
     )
 
 
-def _create_notification(db_session, *, user_id: int, notif_type: str, payload: dict | None = None, read_at=None) -> Notification:
+def _create_notification(
+    db_session,
+    *,
+    kindergarten_id: str,
+    parent_id: str,
+    child_id: str | None = None,
+    type_value: str = "announcement",
+    event_type: str | None = None,
+    title: str = "Notice",
+    message: str = "Message",
+    read_at=None,
+) -> Notification:
     notification = Notification(
-        notification_id=str(uuid.uuid4()),
-        user_id=str(user_id),
-        notif_type=notif_type,
-        payload=payload,
+        id=str(uuid.uuid4()),
+        kindergarten_id=kindergarten_id,
+        parent_id=parent_id,
+        child_id=child_id,
+        type=NotificationType(type_value),
+        event_type=NotificationEventType(event_type) if event_type else None,
+        title=title,
+        message=message,
+        is_read=read_at is not None,
         read_at=read_at,
     )
     db_session.add(notification)
@@ -190,15 +206,19 @@ def test_parent_dashboard_includes_group_pedagogue_attendance_menu_payment_and_u
 
     _create_notification(
         db_session,
-        user_id=parent_account["user"].user_id,
-        notif_type="announcement",
-        payload={"message": "Reminder"},
+        kindergarten_id=verified_tenant["kindergarten"].kindergarten_id,
+        parent_id=parent_account["parent"].parent_id,
+        type_value="announcement",
+        title="Reminder",
+        message="Reminder",
     )
     _create_notification(
         db_session,
-        user_id=parent_account["user"].user_id,
-        notif_type="announcement",
-        payload={"message": "Seen"},
+        kindergarten_id=verified_tenant["kindergarten"].kindergarten_id,
+        parent_id=parent_account["parent"].parent_id,
+        type_value="announcement",
+        title="Seen",
+        message="Seen",
         read_at=utcnow(),
     )
 
@@ -443,21 +463,46 @@ def test_parent_notifications_list_returns_only_current_parent_notifications(
     db_session,
 ):
     other_parent = parent_factory()
-    _create_notification(db_session, user_id=parent_account["user"].user_id, notif_type="payment_created", payload={"x": 1})
-    _create_notification(db_session, user_id=parent_account["user"].user_id, notif_type="payment_overdue", payload={"x": 2})
-    _create_notification(db_session, user_id=other_parent["user"].user_id, notif_type="payment_created", payload={"x": 3})
+    _create_notification(
+        db_session,
+        kindergarten_id="tenant-a",
+        parent_id=parent_account["parent"].parent_id,
+        type_value="system",
+        event_type="payment_created",
+        title="Created",
+        message="Created",
+    )
+    _create_notification(
+        db_session,
+        kindergarten_id="tenant-a",
+        parent_id=parent_account["parent"].parent_id,
+        type_value="system",
+        event_type="payment_overdue",
+        title="Overdue",
+        message="Overdue",
+    )
+    _create_notification(
+        db_session,
+        kindergarten_id="tenant-b",
+        parent_id=other_parent["parent"].parent_id,
+        type_value="system",
+        event_type="payment_created",
+        title="Other",
+        message="Other",
+    )
 
     response = client.get("/api/v1/parent/notifications", headers=parent_account["headers"])
 
     assert response.status_code == status.HTTP_200_OK, response.text
     data = response.json()
     assert data["total"] == 2
-    assert {item["notif_type"] for item in data["items"]} == {"payment_created", "payment_overdue"}
-    assert all(item["user_id"] == str(parent_account["user"].user_id) for item in data["items"])
+    assert {item["event_type"] for item in data["items"]} == {"payment_created", "payment_overdue"}
+    assert all(item["parent_id"] == parent_account["parent"].parent_id for item in data["items"])
 
 
 def test_parent_mark_notification_as_read_works_only_for_own_notification(
     client,
+    verified_tenant,
     parent_account,
     parent_factory,
     db_session,
@@ -465,23 +510,27 @@ def test_parent_mark_notification_as_read_works_only_for_own_notification(
     other_parent = parent_factory()
     own_notification = _create_notification(
         db_session,
-        user_id=parent_account["user"].user_id,
-        notif_type="announcement",
-        payload={"message": "Unread"},
+        kindergarten_id=verified_tenant["kindergarten"].kindergarten_id,
+        parent_id=parent_account["parent"].parent_id,
+        type_value="announcement",
+        title="Unread",
+        message="Unread",
     )
     foreign_notification = _create_notification(
         db_session,
-        user_id=other_parent["user"].user_id,
-        notif_type="announcement",
-        payload={"message": "Foreign"},
+        kindergarten_id=verified_tenant["kindergarten"].kindergarten_id,
+        parent_id=other_parent["parent"].parent_id,
+        type_value="announcement",
+        title="Foreign",
+        message="Foreign",
     )
 
     own_response = client.patch(
-        f"/api/v1/parent/notifications/{own_notification.notification_id}/read",
+        f"/api/v1/parent/notifications/{own_notification.id}/read",
         headers=parent_account["headers"],
     )
     foreign_response = client.patch(
-        f"/api/v1/parent/notifications/{foreign_notification.notification_id}/read",
+        f"/api/v1/parent/notifications/{foreign_notification.id}/read",
         headers=parent_account["headers"],
     )
 

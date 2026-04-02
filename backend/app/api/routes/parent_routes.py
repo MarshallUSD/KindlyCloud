@@ -13,13 +13,19 @@ from app.models.user import User
 from app.schemas.base import PaginatedResponse
 from app.schemas.child import ChildResponse
 from app.schemas.menu import MenuResponse
+from app.models.notification import NotificationEventType, NotificationType
 from app.schemas.notification import NotificationResponse
+from app.schemas.notification import (
+    ParentNotificationSettingsResponse,
+    ParentNotificationSettingsUpdateRequest,
+)
 from app.schemas.parent import (
     ParentAttendanceItemResponse,
     ParentDashboardResponse,
     ParentMenuResponse,
 )
 from app.services.parent import ParentService
+from app.services.notification import NotificationService
 
 router = APIRouter()
 
@@ -101,12 +107,22 @@ def get_todays_menu(
 def list_parent_notifications(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
+    type: Optional[NotificationType] = Query(None),
+    event_type: Optional[NotificationEventType] = Query(None),
+    is_read: Optional[bool] = Query(None),
     current_user: User = Depends(get_current_parent_user),
     db: Session = Depends(get_db),
 ):
     """List notifications for the current parent."""
     try:
-        items, total = ParentService(db).list_notifications(current_user, skip=skip, limit=limit)
+        items, total = ParentService(db).list_notifications(
+            current_user,
+            skip=skip,
+            limit=limit,
+            type_=type,
+            event_type=event_type,
+            is_read=is_read,
+        )
         return {"items": items, "total": total, "skip": skip, "limit": limit, "pages": (total + limit - 1) // limit}
     except ApplicationException as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message)
@@ -121,5 +137,36 @@ def mark_parent_notification_read(
     """Mark one notification as read for the current parent."""
     try:
         return ParentService(db).mark_notification_read(current_user, notification_id)
+    except ApplicationException as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message)
+
+
+@router.get("/notification-settings", response_model=ParentNotificationSettingsResponse)
+def get_parent_notification_settings(
+    current_user: User = Depends(get_current_parent_user),
+    db: Session = Depends(get_db),
+):
+    """Get notification preferences for the current parent."""
+    try:
+        return NotificationService(db).get_settings(current_user)
+    except ApplicationException as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message)
+
+
+@router.patch("/notification-settings", response_model=ParentNotificationSettingsResponse)
+def update_parent_notification_settings(
+    request: ParentNotificationSettingsUpdateRequest,
+    current_user: User = Depends(get_current_parent_user),
+    db: Session = Depends(get_db),
+):
+    """Update notification preferences for the current parent."""
+    try:
+        return NotificationService(db).update_settings(
+            current_user,
+            attendance_enabled=request.attendance_enabled,
+            payments_enabled=request.payments_enabled,
+            announcements_enabled=request.announcements_enabled,
+            telegram_enabled=request.telegram_enabled,
+        )
     except ApplicationException as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message)

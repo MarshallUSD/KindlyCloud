@@ -11,6 +11,7 @@ from app.core.exceptions import ValidationException
 from app.models.attendance import Attendance, AttendanceStatus
 from app.models.child import Child
 from app.models.enrollment import Enrollment
+from app.models.notification import NotificationEventType
 from app.models.user import User
 from app.schemas.attendance import (
     AttendanceBulkSaveRequest,
@@ -18,6 +19,7 @@ from app.schemas.attendance import (
     AttendanceSummaryResponse,
     DailyAttendanceItemResponse,
 )
+from app.services.notification import NotificationService
 from app.services.tenant_scope import TenantScopedService
 
 
@@ -26,6 +28,7 @@ class AttendanceService(TenantScopedService):
 
     def __init__(self, db: Session):
         super().__init__(db)
+        self.notification_service = NotificationService(db)
 
     def _get_scoped_child(self, kindergarten_id: str, child_id: str) -> Child:
         return self.get_tenant_record_or_raise(
@@ -52,11 +55,13 @@ class AttendanceService(TenantScopedService):
         self.get_group_for_kindergarten(kindergarten_id, payload.group_id)
 
         target_child_ids: list[str] = []
+        children_by_id: dict[str, Child] = {}
         for record in payload.records:
             child = self._get_scoped_child(kindergarten_id, record.child_id)
             if child.group_id != payload.group_id:
                 raise ValidationException("Child does not belong to the selected group")
             target_child_ids.append(child.child_id)
+            children_by_id[child.child_id] = child
 
         existing_records = (
             self.db.query(Attendance)
@@ -71,6 +76,7 @@ class AttendanceService(TenantScopedService):
         timestamp = datetime.now(UTC)
         for item in payload.records:
             attendance = existing_by_child.get(item.child_id)
+            previous_status = attendance.status if attendance else None
             if attendance:
                 attendance.group_id = payload.group_id
                 attendance.status = item.status.value
@@ -87,6 +93,13 @@ class AttendanceService(TenantScopedService):
                     marked_at=timestamp,
                 )
                 self.db.add(attendance)
+            self._emit_status_notification_if_needed(
+                kindergarten_id=kindergarten_id,
+                child=children_by_id[item.child_id],
+                previous_status=previous_status,
+                new_status=item.status,
+                event_date=payload.date,
+            )
 
         self.db.commit()
 
@@ -247,3 +260,34 @@ class AttendanceService(TenantScopedService):
             self.db.commit()
             self.db.refresh(record)
         return record
+
+    def _emit_status_notification_if_needed(
+        self,
+        *,
+        kindergarten_id: str,
+        child: Child,
+        previous_status: str | None,
+        new_status: AttendanceStatus,
+        event_date: date,
+    ) -> None:
+        """Emit notifications only when a late or absent status is newly set."""
+        if previous_status == new_status.value:
+            return
+        if new_status == AttendanceStatus.LATE:
+            self.notification_service.create_system_notifications_for_child(
+                kindergarten_id=kindergarten_id,
+                child_id=child.child_id,
+                event_type=NotificationEventType.ATTENDANCE_LATE,
+                title="Davomat yangilandi",
+                message="Farzandingiz bugun kech qoldi.",
+                event_date=event_date,
+            )
+        if new_status == AttendanceStatus.ABSENT:
+            self.notification_service.create_system_notifications_for_child(
+                kindergarten_id=kindergarten_id,
+                child_id=child.child_id,
+                event_type=NotificationEventType.ATTENDANCE_ABSENT,
+                title="Davomat yangilandi",
+                message="Farzandingiz bugun bog'chaga kelmadi.",
+                event_date=event_date,
+            )

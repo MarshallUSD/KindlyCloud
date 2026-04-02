@@ -7,9 +7,6 @@ from sqlalchemy.orm import relationship
 
 from app.core.base import Base
 from app.core.time import utcnow
-from app.models.notification import Notification  # noqa
-
-
 class UserRole(str, Enum):
     """User role enumeration."""
     ADMIN = "admin"
@@ -59,7 +56,11 @@ class User(Base):
 
     kindergarten_users = relationship("KindergartenUser", back_populates="user", cascade="all, delete-orphan")
     parent_user = relationship("ParentUser", back_populates="user", uselist=False, cascade="all, delete-orphan")
-    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
+    announcements_created = relationship(
+        "Announcement",
+        back_populates="creator",
+        foreign_keys="Announcement.created_by_user_id",
+    )
     menus_created = relationship("Menu", back_populates="created_by_user", foreign_keys="Menu.created_by_user_id")
     reviewed_parent_submissions = relationship(
         "ParentSubmission",
