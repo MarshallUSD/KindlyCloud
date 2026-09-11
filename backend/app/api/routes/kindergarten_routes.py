@@ -35,8 +35,16 @@ def create_kindergarten(
     try:
         service = KindergartenService(db)
         kinder = service.create_kindergarten(
-            current_user, request.kinder_name, request.region, request.district,
-            request.address, request.phone, request.email, request.payment_note
+            current_user,
+            kinder_name=request.kinder_name,
+            region=request.region,
+            city=request.city,
+            district=request.district,
+            street=request.street,
+            address=request.address,
+            phone=request.phone,
+            email=request.email,
+            payment_note=request.payment_note,
         )
         return kinder
     except ApplicationException as e:

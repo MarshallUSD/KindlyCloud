@@ -1,7 +1,7 @@
 """Tests for parent read endpoints."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 import uuid
 
@@ -193,13 +193,16 @@ def test_parent_dashboard_includes_group_pedagogue_attendance_menu_payment_and_u
     )
     assert menu_response.status_code == status.HTTP_201_CREATED, menu_response.text
 
+    # Keep the due date in the future so the payment stays "pending" and the
+    # overdue-notification sweep does not fire, regardless of when tests run.
+    future_due = date.today() + timedelta(days=30)
     payment_response = _create_payment(
         client,
         verified_tenant,
         child_id=child["child_id"],
         amount="275000.00",
-        due_date="2026-04-10",
-        billing_period="2026-04",
+        due_date=future_due.isoformat(),
+        billing_period=future_due.strftime("%Y-%m"),
     )
     assert payment_response.status_code == status.HTTP_201_CREATED, payment_response.text
     payment_id = payment_response.json()["payment_id"]
@@ -240,10 +243,10 @@ def test_parent_dashboard_includes_group_pedagogue_attendance_menu_payment_and_u
     assert child_payload["today_menu"]["status"] == "published"
     assert child_payload["latest_payment"] == {
         "payment_id": payment_id,
-        "billing_period": "2026-04",
+        "billing_period": future_due.strftime("%Y-%m"),
         "amount": "275000.00",
         "status": "pending",
-        "due_date": "2026-04-10",
+        "due_date": future_due.isoformat(),
     }
 
 

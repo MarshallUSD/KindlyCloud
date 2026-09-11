@@ -1,0 +1,15 @@
+# Linux virtual environment
+.venv-linux/
+venv/
+
+# Local env files
+.env
+.env.render-backup
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local SQLite
+*.db

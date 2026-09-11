@@ -43,7 +43,7 @@ class MenuResponse(BaseModel):
     menu_id: str
     kindergarten_id: str
     menu_date: date
-    created_by_user_id: str
+    created_by_user_id: int
     status: MenuStatus
     published_at: Optional[datetime]
     notes: Optional[str]
